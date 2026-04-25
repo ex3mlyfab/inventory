@@ -5,6 +5,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,12 +15,12 @@ use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'department_id', 'employee_id', 'phone', 'is_active'])]
+#[Fillable(['name', 'email', 'password', 'department_id', 'storage_location_id', 'employee_id', 'phone', 'is_active'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, HasRoles, LogsActivity, Notifiable, TwoFactorAuthenticatable;
+    use HasFactory, HasRoles, HasUlids, LogsActivity, Notifiable, TwoFactorAuthenticatable;
 
     /**
      * Get the attributes that should be cast.
@@ -42,7 +43,7 @@ class User extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'department_id', 'employee_id', 'phone', 'is_active'])
+            ->logOnly(['name', 'email', 'department_id', 'storage_location_id', 'employee_id', 'phone', 'is_active'])
             ->logOnlyDirty();
     }
 
@@ -52,5 +53,13 @@ class User extends Authenticatable
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the storage location this user is assigned to.
+     */
+    public function storageLocation(): BelongsTo
+    {
+        return $this->belongsTo(StorageLocation::class);
     }
 }

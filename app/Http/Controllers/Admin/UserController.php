@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Department;
+use App\Models\StorageLocation;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
 class UserController extends Controller
@@ -17,7 +19,7 @@ class UserController extends Controller
      */
     public function index(Request $request): Response
     {
-        $query = User::with(['department', 'roles'])
+        $users = User::with(['department', 'roles'])
             ->when($request->search, function ($q, $search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
@@ -28,16 +30,20 @@ class UserController extends Controller
             ->when($request->role, function ($q, $role) {
                 $q->whereHas('roles', fn ($q) => $q->where('name', $role));
             })
-            ->when($request->department, function ($q, $department) {
-                $q->where('department_id', $department);
-            })
             ->when($request->has('active'), function ($q) use ($request) {
                 $q->where('is_active', $request->boolean('active'));
             })
-            ->latest();
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $roles = Role::with('permissions')->get();
+        $permissions = Permission::all()->groupBy(function ($permission) {
+            return explode('.', $permission->name)[0]; // Group by module prefix
+        });
 
         return Inertia::render('admin/users/index', [
-            'users' => $query->paginate(15)->withQueryString(),
+            'users' => $users,
             'roles' => Role::all(['id', 'name']),
             'departments' => Department::where('is_active', true)->get(['id', 'name']),
             'filters' => $request->only(['search', 'role', 'department', 'active']),

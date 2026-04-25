@@ -2,16 +2,19 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use App\Models\Traits\HasLocationScope;
 
 class StorageLocation extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use HasFactory, HasUlids, LogsActivity, SoftDeletes, HasLocationScope;
 
     protected $fillable = [
         'name',
@@ -43,5 +46,13 @@ class StorageLocation extends Model
     public function department(): BelongsTo
     {
         return $this->belongsTo(Department::class);
+    }
+
+    /**
+     * Get the users assigned to this location.
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
     }
 }

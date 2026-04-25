@@ -3,8 +3,8 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Permission;
+use App\Models\Role;
 
 class RolePermissionSeeder extends Seeder
 {
@@ -25,7 +25,14 @@ class RolePermissionSeeder extends Seeder
             'products.create',
             'products.edit',
             'products.delete',
-            'categories.manage',
+            'categories.view',
+            'categories.create',
+            'categories.edit',
+            'categories.delete',
+            'units.view',
+            'units.create',
+            'units.edit',
+            'units.delete',
             'locations.manage',
 
             // Stock & Inventory
@@ -87,7 +94,9 @@ class RolePermissionSeeder extends Seeder
         $inventoryManager = Role::firstOrCreate(['name' => 'Inventory Manager', 'guard_name' => 'web']);
         $inventoryManager->syncPermissions([
             'products.view', 'products.create', 'products.edit', 'products.delete',
-            'categories.manage', 'locations.manage',
+            'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+            'units.view', 'units.create', 'units.edit', 'units.delete',
+            'locations.manage',
             'stock.view', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
             'suppliers.view',
             'requisitions.create', 'requisitions.approve',

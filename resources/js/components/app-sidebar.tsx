@@ -74,32 +74,32 @@ export function AppSidebar() {
         // ─── Stock & Inventory ──────────────────────────────────
         {
             title: 'Stock & Inventory',
-            href: '/stock',
+            href: '/inventory/stock',
             icon: Box,
             children: [
                 {
                     title: 'Stock Levels',
-                    href: '/stock/levels',
+                    href: '/inventory/stock',
                     permission: 'stock.view',
                 },
                 {
                     title: 'Stock Movements',
-                    href: '/stock/movements',
+                    href: '/inventory/stock-movements',
                     permission: 'stock.movements.view',
                 },
                 {
                     title: 'Adjustments',
-                    href: '/stock/adjustments',
+                    href: '/inventory/stock-adjustments',
                     permission: 'stock.adjust',
                 },
                 {
                     title: 'Transfers',
-                    href: '/stock/transfers',
+                    href: '/inventory/stock-transfers',
                     permission: 'stock.transfer',
                 },
                 {
                     title: 'Stock Count',
-                    href: '/stock/count',
+                    href: '/inventory/stock-count',
                     permission: 'stock.count',
                 },
             ],
@@ -218,7 +218,7 @@ export function AppSidebar() {
             icon: Shield,
             children: [
                 {
-                    title: 'Users',
+                    title: 'User Management',
                     href: '/admin/users',
                     permission: 'users.manage',
                 },

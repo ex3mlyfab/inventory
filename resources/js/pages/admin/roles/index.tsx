@@ -1,9 +1,22 @@
-import { Head, Link } from '@inertiajs/react';
+import React, { useState, Fragment } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import type { Permission, Role } from '@/types';
-import { Shield, ShieldCheck } from 'lucide-react';
+import { Shield, ShieldCheck, Plus, Save } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
     roles: (Role & { permissions: Permission[] })[];
@@ -35,6 +48,22 @@ const moduleLabels: Record<string, string> = {
 };
 
 export default function RolesIndex({ roles, permissionGroups }: Props) {
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const { data, setData, post, processing, reset, errors } = useForm({
+        name: '',
+    });
+
+    function handleCreateRole(e: React.FormEvent) {
+        e.preventDefault();
+        post('/admin/roles', {
+            onSuccess: () => {
+                setIsCreateOpen(false);
+                reset();
+                toast.success('New role created successfully');
+            },
+        });
+    }
+
     return (
         <>
             <Head title="Roles & Permissions" />
@@ -42,6 +71,55 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                 <PageHeader
                     title="Roles & Permissions"
                     description="View and manage role-based access control for the inventory system."
+                    actions={
+                        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="bg-[#008060] hover:bg-[#006e52]">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Create New Role
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[425px]">
+                                <form onSubmit={handleCreateRole}>
+                                    <DialogHeader>
+                                        <DialogTitle>Create New Role</DialogTitle>
+                                        <DialogDescription>
+                                            Enter a unique name for the new administrative role.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="name">Role Name</Label>
+                                            <Input
+                                                id="name"
+                                                value={data.name}
+                                                onChange={(e) => setData('name', e.target.value)}
+                                                placeholder="e.g. Finance Manager"
+                                                className={errors.name ? 'border-red-500' : ''}
+                                            />
+                                            {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button 
+                                            type="button" 
+                                            variant="outline" 
+                                            onClick={() => setIsCreateOpen(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button 
+                                            type="submit" 
+                                            className="bg-[#008060] hover:bg-[#006e52]"
+                                            disabled={processing}
+                                        >
+                                            {processing ? 'Creating...' : 'Create Role'}
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </DialogContent>
+                        </Dialog>
+                    }
                 />
 
                 {/* Role Cards — 4-column grid */}
@@ -66,7 +144,7 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                             <p className="mt-3 text-xs text-[#6D7175]">
                                 {role.name === 'Super Admin'
                                     ? 'Full system access — bypasses all permission checks'
-                                    : `${role.permissions.length} permission${role.permissions.length !== 1 ? 's' : ''} assigned`}
+                                    : `${role.permissions?.length || 0} permission${role.permissions?.length !== 1 ? 's' : ''} assigned`}
                             </p>
                             {role.name !== 'Super Admin' && (
                                 <Button
@@ -104,9 +182,9 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                                 </tr>
                             </thead>
                             <tbody>
-                                {Object.entries(permissionGroups).map(([group, permissions]) => (
-                                    <>
-                                        <tr key={group} className="bg-[#f0f5f0]">
+                                {Object.entries(permissionGroups || {}).map(([group, permissions]) => (
+                                    <Fragment key={group}>
+                                        <tr className="bg-[#f0f5f0]">
                                             <td colSpan={roles.length} className="p-3 text-xs font-semibold text-[#3e4944]">
                                                 {moduleLabels[group] || group}
                                             </td>
@@ -116,7 +194,7 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                                                 <td className="p-3 pl-6 text-sm text-[#6D7175]">{perm.name}</td>
                                                 {roles.filter((r) => r.name !== 'Super Admin').map((role) => (
                                                     <td key={role.id} className="p-3 text-center">
-                                                        {role.permissions.some((p) => p.name === perm.name) ? (
+                                                        {role.permissions?.some((p) => p.name === perm.name) ? (
                                                             <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#e0f4eb] text-[10px] font-bold text-[#006e3c]">
                                                                 ✓
                                                             </span>
@@ -127,7 +205,7 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                                                 ))}
                                             </tr>
                                         ))}
-                                    </>
+                                    </Fragment>
                                 ))}
                             </tbody>
                         </table>
@@ -141,6 +219,6 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
 RolesIndex.layout = {
     breadcrumbs: [
         { title: 'Administration', href: '/admin/users' },
-        { title: 'Roles & Permissions', href: '/admin/roles' },
+        { title: 'Roles', href: '/admin/roles' },
     ],
 };

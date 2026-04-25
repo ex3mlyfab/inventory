@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
-import type { Department, Role, User } from '@/types';
+import type { Department, Role, User } from '@/types/auth';
 import { ArrowLeft } from 'lucide-react';
 
 interface Props {
@@ -115,7 +115,6 @@ export default function EditUser({ user, userRoles, roles, departments }: Props)
                         </div>
                     </div>
 
-                    <div className="border-t border-[#E1E3E5]" />
 
                     {/* Section: Password */}
                     <div>

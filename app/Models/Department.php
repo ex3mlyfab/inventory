@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -12,11 +13,12 @@ use Spatie\Activitylog\Models\Concerns\LogsActivity;
 
 class Department extends Model
 {
-    use HasFactory, LogsActivity, SoftDeletes;
+    use HasFactory, HasUlids, LogsActivity, SoftDeletes;
 
     protected $fillable = [
         'name',
         'code',
+        'parent_id',
         'head_user_id',
         'type',
         'description',
@@ -33,16 +35,40 @@ class Department extends Model
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'code', 'head_user_id', 'type', 'is_active'])
+            ->logOnly(['name', 'code', 'parent_id', 'head_user_id', 'type', 'is_active'])
             ->logOnlyDirty();
     }
 
     /**
-     * Get the department head.
+     * Get the parent department.
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Department::class, 'parent_id');
+    }
+
+    /**
+     * Get the child departments.
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Department::class, 'parent_id');
+    }
+
+    /**
+     * Get the department head / supervisor.
      */
     public function head(): BelongsTo
     {
         return $this->belongsTo(User::class, 'head_user_id');
+    }
+
+    /**
+     * Alias for head relationship.
+     */
+    public function supervisor(): BelongsTo
+    {
+        return $this->head();
     }
 
     /**

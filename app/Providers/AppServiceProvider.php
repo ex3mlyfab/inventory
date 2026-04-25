@@ -26,6 +26,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuthorization();
+        
+        \App\Models\StockBatch::observe(\App\Observers\StockBatchObserver::class);
     }
 
     /**

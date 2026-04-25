@@ -1,12 +1,14 @@
 export type User = {
-    id: number;
+    id: string;
     name: string;
     email: string;
     avatar?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
-    department_id: number | null;
+    department_id: string | null;
     department?: Department;
+    storage_location_id: string | null;
+    storage_location?: StorageLocation;
     employee_id: string | null;
     phone: string | null;
     is_active: boolean;
@@ -23,7 +25,7 @@ export type Auth = {
 };
 
 export type Role = {
-    id: number;
+    id: string;
     name: string;
     guard_name: string;
     permissions?: Permission[];
@@ -32,7 +34,7 @@ export type Role = {
 };
 
 export type Permission = {
-    id: number;
+    id: string;
     name: string;
     guard_name: string;
     created_at: string;
@@ -40,11 +42,15 @@ export type Permission = {
 };
 
 export type Department = {
-    id: number;
+    id: string;
+    parent_id: string | null;
+    parent?: Department | null;
+    children?: Department[];
     name: string;
     code: string;
-    head_user_id: number | null;
+    head_user_id: string | null;
     head?: User;
+    supervisor?: User;
     type: 'ward' | 'admin' | 'support' | 'clinical' | 'pharmacy';
     description: string | null;
     is_active: boolean;
@@ -54,11 +60,11 @@ export type Department = {
 };
 
 export type StorageLocation = {
-    id: number;
+    id: string;
     name: string;
     code: string;
     type: 'main_store' | 'pharmacy' | 'satellite_pharmacy' | 'ward_store' | 'laboratory';
-    department_id: number | null;
+    department_id: string | null;
     department?: Department;
     address: string | null;
     description: string | null;
@@ -68,10 +74,10 @@ export type StorageLocation = {
 };
 
 export type UnitOfMeasure = {
-    id: number;
+    id: string;
     name: string;
     abbreviation: string;
-    base_unit_id: number | null;
+    base_unit_id: string | null;
     base_unit?: UnitOfMeasure;
     conversion_factor: number;
     created_at: string;

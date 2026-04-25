@@ -6,8 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Models\Permission;
+use App\Models\Role;
 
 class RoleController extends Controller
 {
@@ -28,8 +28,24 @@ class RoleController extends Controller
     }
 
     /**
-     * Show the form for editing a role's permissions.
+     * Store a newly created role.
      */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255', 'unique:roles,name'],
+            'permissions' => ['nullable', 'array'],
+            'permissions.*' => ['exists:permissions,name'],
+        ]);
+
+        $role = Role::create(['name' => $validated['name']]);
+        
+        if (!empty($validated['permissions'])) {
+            $role->syncPermissions($validated['permissions']);
+        }
+
+        return back()->with('success', "Role '{$role->name}' created successfully.");
+    }
     public function edit(Role $role): Response
     {
         $role->load('permissions');
@@ -61,7 +77,7 @@ class RoleController extends Controller
 
         $role->syncPermissions($validated['permissions']);
 
-        return redirect()->route('admin.roles.index')
+        return back()
             ->with('success', "Permissions updated for '{$role->name}' role.");
     }
 }

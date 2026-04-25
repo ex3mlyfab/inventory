@@ -11,7 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
-import type { Department, Role } from '@/types';
+import type { Department, Role } from '@/types/auth';
 import { ArrowLeft } from 'lucide-react';
 
 interface Props {
@@ -25,6 +25,7 @@ export default function CreateUser({ roles, departments }: Props) {
         email: '',
         password: '',
         password_confirmation: '',
+        department_id: '' as string,
         department_id: '' as string,
         employee_id: '',
         phone: '',
@@ -90,29 +91,6 @@ export default function CreateUser({ roles, departments }: Props) {
                         </div>
                     </div>
 
-                    {/* Divider */}
-                    <div className="border-t border-[#E1E3E5]" />
-
-                    {/* Section: Department */}
-                    <div>
-                        <h3 className="mb-4 text-sm font-semibold text-[#181d1a]">Department Assignment</h3>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="department_id" className="text-xs font-medium text-[#202223]">Department</Label>
-                            <Select value={data.department_id} onValueChange={(v) => setData('department_id', v)}>
-                                <SelectTrigger className="border-[#babfc3]">
-                                    <SelectValue placeholder="Select a department" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {departments.map((dept) => (
-                                        <SelectItem key={dept.id} value={String(dept.id)}>
-                                            {dept.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {errors.department_id && <p className="text-xs text-[#D82C0D]">{errors.department_id}</p>}
-                        </div>
-                    </div>
 
                     {/* Divider */}
                     <div className="border-t border-[#E1E3E5]" />

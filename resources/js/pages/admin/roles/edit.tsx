@@ -1,3 +1,4 @@
+import React from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -140,7 +141,7 @@ export default function EditRole({ role, rolePermissions, permissionGroups }: Pr
 EditRole.layout = {
     breadcrumbs: [
         { title: 'Administration', href: '/admin/users' },
-        { title: 'Roles & Permissions', href: '/admin/roles' },
-        { title: 'Edit', href: '#' },
+        { title: 'Roles', href: '/admin/roles' },
+        { title: 'Permissions', href: '#' },
     ],
 };
