@@ -23,23 +23,24 @@ export function DateRangePicker({
     return (
         <div className={cn('flex flex-col gap-1.5', className)}>
             {label && <Label className="text-xs text-text-secondary">{label}</Label>}
-            <div className="flex items-center gap-2">
-                <div className="relative">
+            <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground ml-1">From</span>
                     <Input
                         type="date"
                         value={startDate}
                         onChange={(e) => onStartDateChange(e.target.value)}
-                        className="h-9 text-sm"
+                        className="h-9 text-xs rounded-lg"
                     />
                 </div>
-                <span className="text-text-muted text-sm px-1">to</span>
-                <div className="relative">
+                <div className="flex flex-col gap-1">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground ml-1">To</span>
                     <Input
                         type="date"
                         value={endDate}
                         onChange={(e) => onEndDateChange(e.target.value)}
-                        className="h-9 text-sm"
-                        min={startDate} // Prevent end date from being before start date natively
+                        className="h-9 text-xs rounded-lg"
+                        min={startDate}
                     />
                 </div>
             </div>

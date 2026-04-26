@@ -37,6 +37,7 @@ class RolePermissionSeeder extends Seeder
 
             // Stock & Inventory
             'stock.view',
+            'stock.allocate',
             'stock.adjust',
             'stock.transfer',
             'stock.count',
@@ -44,14 +45,22 @@ class RolePermissionSeeder extends Seeder
 
             // Procurement
             'suppliers.view',
+            'suppliers.create',
+            'suppliers.edit',
+            'suppliers.delete',
             'suppliers.manage',
+            'requisitions.view',
             'requisitions.create',
-            'requisitions.approve',
+            'requisitions.approve.l1',
+            'requisitions.approve.l2',
+            'requisitions.cancel',
             'purchase-orders.view',
             'purchase-orders.create',
-            'purchase-orders.approve',
-            'grn.create',
+            'purchase-orders.approve.l1',
+            'purchase-orders.approve.l2',
             'grn.view',
+            'grn.create',
+            'grn.approve',
 
             // Dispensing
             'dispensing.view',
@@ -97,11 +106,11 @@ class RolePermissionSeeder extends Seeder
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
             'units.view', 'units.create', 'units.edit', 'units.delete',
             'locations.manage',
-            'stock.view', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'suppliers.view',
-            'requisitions.create', 'requisitions.approve',
-            'purchase-orders.view', 'purchase-orders.approve',
-            'grn.view',
+            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
+            'purchase-orders.view', 'purchase-orders.approve.l1',
+            'grn.view', 'grn.create', 'grn.approve',
             'dispensing.view',
             'ward-requisitions.approve',
             'assets.view', 'assets.manage',
@@ -115,10 +124,23 @@ class RolePermissionSeeder extends Seeder
         $procurementOfficer->syncPermissions([
             'products.view',
             'stock.view', 'stock.movements.view',
-            'suppliers.view', 'suppliers.manage',
-            'requisitions.create', 'requisitions.approve',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.manage',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
             'purchase-orders.view', 'purchase-orders.create',
-            'grn.create', 'grn.view',
+            'grn.view', 'grn.create', 'grn.approve',
+            'assets.view',
+            'reports.view', 'reports.export',
+        ]);
+
+        // 3b. Procurement Supervisor
+        $procurementSupervisor = Role::firstOrCreate(['name' => 'Procurement Supervisor', 'guard_name' => 'web']);
+        $procurementSupervisor->syncPermissions([
+            'products.view',
+            'stock.view', 'stock.movements.view',
+            'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.manage',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
+            'purchase-orders.view', 'purchase-orders.create', 'purchase-orders.approve.l1',
+            'grn.view', 'grn.create', 'grn.approve',
             'assets.view',
             'reports.view', 'reports.export',
         ]);
@@ -128,7 +150,7 @@ class RolePermissionSeeder extends Seeder
         $pharmacist->syncPermissions([
             'products.view',
             'stock.view', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.create',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel',
             'dispensing.view', 'dispensing.create',
             'ward-requisitions.approve',
             'controlled-substances.manage',
@@ -140,7 +162,7 @@ class RolePermissionSeeder extends Seeder
         $wardHead->syncPermissions([
             'products.view',
             'stock.view', 'stock.movements.view',
-            'requisitions.create',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
             'dispensing.view',
             'ward-requisitions.create',
             'assets.view',
@@ -152,16 +174,16 @@ class RolePermissionSeeder extends Seeder
         $storeOfficer = Role::firstOrCreate(['name' => 'Store Officer', 'guard_name' => 'web']);
         $storeOfficer->syncPermissions([
             'products.view',
-            'stock.view', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.create',
-            'grn.create', 'grn.view',
+            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel',
+            'grn.view', 'grn.create',
             'reports.view',
         ]);
 
         // 7. Biomedical Engineer
         $biomedicalEngineer = Role::firstOrCreate(['name' => 'Biomedical Engineer', 'guard_name' => 'web']);
         $biomedicalEngineer->syncPermissions([
-            'requisitions.create',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel',
             'assets.view', 'assets.manage',
             'maintenance.schedule', 'maintenance.view',
             'work-orders.manage',
@@ -174,12 +196,37 @@ class RolePermissionSeeder extends Seeder
         $auditor->syncPermissions([
             'products.view',
             'stock.view', 'stock.movements.view',
+            'requisitions.view',
             'suppliers.view',
             'purchase-orders.view',
             'grn.view',
             'dispensing.view',
             'assets.view',
             'maintenance.view',
+            'reports.view', 'reports.export',
+            'audit-trail.view',
+        ]);
+
+        // 9. Medical Director
+        $medicalDirector = Role::firstOrCreate(['name' => 'Medical Director', 'guard_name' => 'web']);
+        $medicalDirector->syncPermissions([
+            'products.view',
+            'stock.view', 'stock.movements.view',
+            'requisitions.view', 'requisitions.approve.l2',
+            'suppliers.view',
+            'purchase-orders.view', 'purchase-orders.approve.l2',
+            'grn.view',
+            'reports.view', 'reports.export',
+            'audit-trail.view',
+        ]);
+
+        // 10. Store Manager
+        $storeManager = Role::firstOrCreate(['name' => 'Store Manager', 'guard_name' => 'web']);
+        $storeManager->syncPermissions([
+            'products.view',
+            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+            'requisitions.view',
+            'grn.view',
             'reports.view', 'reports.export',
             'audit-trail.view',
         ]);

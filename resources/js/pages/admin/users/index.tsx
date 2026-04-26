@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/table';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { Can } from '@/components/can';
 import type { Department, PaginatedData, Role, User } from '@/types';
 import { Plus, Search, UserCog } from 'lucide-react';
 import { useState } from 'react';
@@ -56,12 +57,14 @@ export default function UsersIndex({ users, roles, departments, filters }: Props
                     title="User Management"
                     description="Manage system users, roles, and access."
                     actions={
-                        <Button asChild className="bg-[#008060] hover:bg-[#006e52]">
-                            <Link href="/admin/users/create">
-                                <Plus className="mr-2 h-4 w-4" />
-                                Add User
-                            </Link>
-                        </Button>
+                        <Can permission="users.manage">
+                            <Button asChild className="bg-[#008060] hover:bg-[#006e52]">
+                                <Link href="/admin/users/create">
+                                    <Plus className="mr-2 h-4 w-4" />
+                                    Add User
+                                </Link>
+                            </Button>
+                        </Can>
                     }
                 />
 
@@ -159,17 +162,19 @@ export default function UsersIndex({ users, roles, departments, filters }: Props
                                             </StatusBadge>
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                asChild
-                                                className="text-[#008060] hover:bg-[#e0f4eb] hover:text-[#006e3c]"
-                                            >
-                                                <Link href={`/admin/users/${user.id}/edit`}>
-                                                    <UserCog className="mr-1 h-4 w-4" />
-                                                    Edit
-                                                </Link>
-                                            </Button>
+                                            <Can permission="users.manage">
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    asChild
+                                                    className="text-[#008060] hover:bg-[#e0f4eb] hover:text-[#006e3c]"
+                                                >
+                                                    <Link href={`/admin/users/${user.id}/edit`}>
+                                                        <UserCog className="mr-1 h-4 w-4" />
+                                                        Edit
+                                                    </Link>
+                                                </Button>
+                                            </Can>
                                         </TableCell>
                                     </TableRow>
                                 ))

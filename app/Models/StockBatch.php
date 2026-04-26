@@ -14,7 +14,7 @@ class StockBatch extends Model
     use HasFactory, HasUlids, HasLocationScope;
 
     protected $fillable = [
-        'product_id', 'batch_number', 'reference', 'quantity_received',
+        'product_id', 'supplier_id', 'batch_number', 'reference', 'quantity_received',
         'quantity_on_hand', 'unit_cost', 'manufacturing_date', 'expiry_date',
         'location', 'storage_location_id', 'status'
     ];
@@ -28,6 +28,11 @@ class StockBatch extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function storageLocation(): BelongsTo

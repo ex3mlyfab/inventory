@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\StockAdjustment;
 use App\Models\StockBatch;
+use App\Models\Product;
 use App\Actions\Inventory\AdjustStockAction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -16,13 +17,51 @@ class StockAdjustmentController extends Controller
     {
         Gate::authorize('stock.view');
 
-        $adjustments = StockAdjustment::with(['batch.product', 'performer', 'approver'])
-            ->latest()
-            ->paginate(20);
+        $query = StockAdjustment::with(['batch.product', 'performer', 'approver'])
+            ->whereHas('batch') // Respects HasLocationScope on StockBatch
+            ->latest();
+
+        $stats = [
+            'pending' => (clone $query)->where('status', 'pending')->count(),
+            'approved_today' => (clone $query)->where('status', 'approved')->whereDate('updated_at', today())->count(),
+            'total_this_month' => (clone $query)->whereMonth('created_at', now()->month)->count(),
+        ];
+
+        $adjustments = $query->paginate(20);
 
         return Inertia::render('Inventory/Stock/Adjustments', [
             'adjustments' => $adjustments,
+            'stats' => $stats,
         ]);
+    }
+
+
+    public function searchBatches(Request $request)
+    {
+        Gate::authorize('stock.view');
+
+        $search = $request->input('search');
+
+        if (empty($search)) {
+            return response()->json([]);
+        }
+
+        // We want to return products that have ACTIVE batches in the user's scope.
+        // The HasLocationScope trait on StockBatch will automatically handle the scoping.
+        $products = Product::where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('sku', 'like', "%{$search}%");
+            })
+            ->whereHas('stockBatches', function($q) {
+                $q->where('status', 'active');
+            })
+            ->with(['stockBatches' => function($q) {
+                $q->where('status', 'active')->with('storageLocation');
+            }, 'unitOfMeasure'])
+            ->limit(10)
+            ->get();
+
+        return response()->json($products);
     }
 
     public function store(Request $request, AdjustStockAction $action)

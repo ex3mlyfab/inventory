@@ -88,9 +88,14 @@ export function AppSidebar() {
                     permission: 'stock.movements.view',
                 },
                 {
-                    title: 'Adjustments',
+                    title: 'Stock Adjustments',
                     href: '/inventory/stock-adjustments',
                     permission: 'stock.adjust',
+                },
+                {
+                    title: 'Initial Allocation',
+                    href: '/inventory/initial-allocation',
+                    permission: 'stock.allocate',
                 },
                 {
                     title: 'Transfers',
@@ -112,9 +117,19 @@ export function AppSidebar() {
             icon: ClipboardList,
             children: [
                 {
-                    title: 'Suppliers',
+                    title: 'Supplier Directory',
                     href: '/procurement/suppliers',
                     permission: 'suppliers.view',
+                },
+                {
+                    title: 'Supplier Insights',
+                    href: '/procurement/suppliers/dashboard',
+                    permission: 'suppliers.view',
+                },
+                {
+                    title: 'Goods Received (GRN)',
+                    href: '/procurement/grn',
+                    permission: 'grn.view',
                 },
                 {
                     title: 'Requisitions',
@@ -125,11 +140,6 @@ export function AppSidebar() {
                     title: 'Purchase Orders',
                     href: '/procurement/purchase-orders',
                     permission: 'purchase-orders.view',
-                },
-                {
-                    title: 'Goods Received',
-                    href: '/procurement/grn',
-                    permission: 'grn.view',
                 },
             ],
         },

@@ -3,6 +3,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { Can } from '@/components/can';
 import {
     Dialog,
     DialogContent,
@@ -72,53 +73,55 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                     title="Roles & Permissions"
                     description="View and manage role-based access control for the inventory system."
                     actions={
-                        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                            <DialogTrigger asChild>
-                                <Button className="bg-[#008060] hover:bg-[#006e52]">
-                                    <Plus className="mr-2 h-4 w-4" />
-                                    Create New Role
-                                </Button>
-                            </DialogTrigger>
-                            <DialogContent className="sm:max-w-[425px]">
-                                <form onSubmit={handleCreateRole}>
-                                    <DialogHeader>
-                                        <DialogTitle>Create New Role</DialogTitle>
-                                        <DialogDescription>
-                                            Enter a unique name for the new administrative role.
-                                        </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="grid gap-4 py-4">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="name">Role Name</Label>
-                                            <Input
-                                                id="name"
-                                                value={data.name}
-                                                onChange={(e) => setData('name', e.target.value)}
-                                                placeholder="e.g. Finance Manager"
-                                                className={errors.name ? 'border-red-500' : ''}
-                                            />
-                                            {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                        <Can permission="roles.manage">
+                            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                                <DialogTrigger asChild>
+                                    <Button className="bg-[#008060] hover:bg-[#006e52]">
+                                        <Plus className="mr-2 h-4 w-4" />
+                                        Create New Role
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                    <form onSubmit={handleCreateRole}>
+                                        <DialogHeader>
+                                            <DialogTitle>Create New Role</DialogTitle>
+                                            <DialogDescription>
+                                                Enter a unique name for the new administrative role.
+                                            </DialogDescription>
+                                        </DialogHeader>
+                                        <div className="grid gap-4 py-4">
+                                            <div className="grid gap-2">
+                                                <Label htmlFor="name">Role Name</Label>
+                                                <Input
+                                                    id="name"
+                                                    value={data.name}
+                                                    onChange={(e) => setData('name', e.target.value)}
+                                                    placeholder="e.g. Finance Manager"
+                                                    className={errors.name ? 'border-red-500' : ''}
+                                                />
+                                                {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                                            </div>
                                         </div>
-                                    </div>
-                                    <DialogFooter>
-                                        <Button 
-                                            type="button" 
-                                            variant="outline" 
-                                            onClick={() => setIsCreateOpen(false)}
-                                        >
-                                            Cancel
-                                        </Button>
-                                        <Button 
-                                            type="submit" 
-                                            className="bg-[#008060] hover:bg-[#006e52]"
-                                            disabled={processing}
-                                        >
-                                            {processing ? 'Creating...' : 'Create Role'}
-                                        </Button>
-                                    </DialogFooter>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
+                                        <DialogFooter>
+                                            <Button 
+                                                type="button" 
+                                                variant="outline" 
+                                                onClick={() => setIsCreateOpen(false)}
+                                            >
+                                                Cancel
+                                            </Button>
+                                            <Button 
+                                                type="submit" 
+                                                className="bg-[#008060] hover:bg-[#006e52]"
+                                                disabled={processing}
+                                            >
+                                                {processing ? 'Creating...' : 'Create Role'}
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </Can>
                     }
                 />
 
@@ -147,16 +150,18 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                                     : `${role.permissions?.length || 0} permission${role.permissions?.length !== 1 ? 's' : ''} assigned`}
                             </p>
                             {role.name !== 'Super Admin' && (
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    asChild
-                                    className="mt-3 border-[#babfc3] text-xs"
-                                >
-                                    <Link href={`/admin/roles/${role.id}/edit`}>
-                                        Edit Permissions
-                                    </Link>
-                                </Button>
+                                <Can permission="roles.manage">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        asChild
+                                        className="mt-3 border-[#babfc3] text-xs"
+                                    >
+                                        <Link href={`/admin/roles/${role.id}/edit`}>
+                                            Edit Permissions
+                                        </Link>
+                                    </Button>
+                                </Can>
                             )}
                         </div>
                     ))}

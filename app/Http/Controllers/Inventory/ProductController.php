@@ -9,7 +9,9 @@ use App\Http\Requests\Inventory\StoreProductRequest;
 use App\Http\Requests\Inventory\UpdateProductRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
+use Carbon\Carbon;
 
 class ProductController extends Controller
 {
@@ -74,12 +76,39 @@ class ProductController extends Controller
     {
         Gate::authorize('products.view');
 
-        $product->load(['category', 'unitOfMeasure', 'stockBatches.movements' => function($query) {
-            $query->latest()->take(5);
-        }]);
+        $product->load([
+            'category', 
+            'unitOfMeasure', 
+            'stockBatches' => function($q) {
+                $q->orderBy('expiry_date', 'asc');
+            }
+        ]);
+
+        // Get recent movements across all batches of this product
+        $recentMovements = \App\Models\StockMovement::whereIn('stock_batch_id', $product->stockBatches->pluck('id'))
+            ->with(['user', 'batch'])
+            ->latest()
+            ->take(20)
+            ->get();
+
+        // Prepare chart data: Last 30 days of stock levels
+        $chartData = \App\Models\StockMovement::whereIn('stock_batch_id', $product->stockBatches->pluck('id'))
+            ->selectRaw('DATE(created_at) as date, SUM(CASE WHEN type IN ("in", "adjustment") AND quantity > 0 THEN quantity ELSE -ABS(quantity) END) as net_change')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->map(function($item) {
+                return [
+                    'date' => Carbon::parse($item->date)->format('M d'),
+                    'change' => (float)$item->net_change,
+                ];
+            });
 
         return Inertia::render('Inventory/Products/Show', [
             'product' => $product,
+            'recentMovements' => $recentMovements,
+            'chartData' => $chartData,
         ]);
     }
 
@@ -106,7 +135,7 @@ class ProductController extends Controller
         if ($request->hasFile('image')) {
             // Delete old image if exists
             if ($product->image_path) {
-                \Illuminate\Support\Facades\Storage::disk('public')->delete($product->image_path);
+                Storage::disk('public')->delete($product->image_path);
             }
             $data['image_path'] = $request->file('image')->store('products', 'public');
         }

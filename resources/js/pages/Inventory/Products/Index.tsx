@@ -24,8 +24,7 @@ import { AlertTriangle, PackageSearch } from 'lucide-react';
 interface Props {
     products: {
         data: Product[];
-        meta: PaginationMeta;
-    };
+    } & PaginationMeta;
     filters: {
         search?: string;
     };
@@ -208,7 +207,7 @@ export default function ProductsIndex({ products, filters, stats }: Props) {
                         <DataTable 
                             columns={columns}
                             data={products.data}
-                            meta={products.meta}
+                            meta={products}
                             keyExtractor={(p) => p.id}
                             emptyMessage={
                                 <div className="flex flex-col items-center justify-center py-20 text-center gap-3">

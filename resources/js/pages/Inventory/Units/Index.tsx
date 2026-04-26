@@ -178,12 +178,14 @@ export default function UnitsIndex({ units, filters, base_units }: Props) {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => openEdit(unit)} className="cursor-pointer">
-                            <Edit2 className="mr-2 h-4 w-4" />
-                            Edit Details
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
+                        <Can permission="units.edit">
+                            <DropdownMenuItem onClick={() => openEdit(unit)} className="cursor-pointer">
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Edit Details
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                        </Can>
                         <Can permission="units.delete">
                             <DropdownMenuItem 
                                 className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
