@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class TransferStockAction
 {
-    public function execute(StockBatch $sourceBatch, string $targetLocationId, int $quantity, int $performerId): void
+    public function execute(StockBatch $sourceBatch, string $targetLocationId, int $quantity, string $performerId): void
     {
         DB::transaction(function () use ($sourceBatch, $targetLocationId, $quantity, $performerId) {
             $balanceBeforeSource = $sourceBatch->quantity_on_hand;
@@ -34,6 +34,7 @@ class TransferStockAction
                 ],
                 [
                     'quantity_on_hand' => 0,
+                    'quantity_received' => 0,
                     'unit_cost' => $sourceBatch->unit_cost,
                     'status' => 'active',
                 ]
@@ -42,6 +43,7 @@ class TransferStockAction
             $balanceBeforeTarget = $targetBatch->quantity_on_hand;
             $balanceAfterTarget = $balanceBeforeTarget + $quantity;
             $targetBatch->increment('quantity_on_hand', $quantity);
+            $targetBatch->increment('quantity_received', $quantity);
 
             // 3. Log Source Movement (OUT)
             StockMovement::create([

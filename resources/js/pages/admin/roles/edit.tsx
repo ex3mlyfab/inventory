@@ -21,9 +21,7 @@ const moduleLabels: Record<string, string> = {
     requisitions: 'Requisitions',
     'purchase-orders': 'Purchase Orders',
     grn: 'Goods Received',
-    dispensing: 'Dispensing',
-    'ward-requisitions': 'Ward Requisitions',
-    'controlled-substances': 'Controlled Substances',
+
     assets: 'Equipment Assets',
     maintenance: 'Maintenance',
     'work-orders': 'Work Orders',

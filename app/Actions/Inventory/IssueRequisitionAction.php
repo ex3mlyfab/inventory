@@ -14,7 +14,7 @@ class IssueRequisitionAction
      * Issue items for a requisition from a specific store.
      * $issuances: array of ['requisition_item_id' => '...', 'stock_batch_id' => '...', 'quantity' => 10]
      */
-    public function execute(Requisition $requisition, array $issuances, int $performerId): void
+    public function execute(Requisition $requisition, array $issuances, string $performerId): void
     {
         DB::transaction(function () use ($requisition, $issuances, $performerId) {
             foreach ($issuances as $issuance) {
@@ -35,41 +35,6 @@ class IssueRequisitionAction
                     'status' => $balanceAfterSource <= 0 ? 'exhausted' : $sourceBatch->status
                 ]);
 
-                // 2. Add to Target (Requesting Location)
-                // If it's an internal requisition, move the stock to the requesting location.
-                if ($requisition->type === 'internal') {
-                    $targetBatch = StockBatch::firstOrCreate(
-                        [
-                            'storage_location_id' => $requisition->requesting_location_id,
-                            'product_id' => $sourceBatch->product_id,
-                            'batch_number' => $sourceBatch->batch_number,
-                            'expiry_date' => $sourceBatch->expiry_date,
-                        ],
-                        [
-                            'quantity_on_hand' => 0,
-                            'unit_cost' => $sourceBatch->unit_cost,
-                            'status' => 'active',
-                        ]
-                    );
-
-                    $balanceBeforeTarget = $targetBatch->quantity_on_hand;
-                    $balanceAfterTarget = $balanceBeforeTarget + $qty;
-                    $targetBatch->increment('quantity_on_hand', $qty);
-
-                    // Log Target Inflow
-                    StockMovement::create([
-                        'stock_batch_id' => $targetBatch->id,
-                        'user_id' => $performerId,
-                        'type' => 'requisition_fulfillment',
-                        'quantity' => $qty,
-                        'balance_before' => $balanceBeforeTarget,
-                        'balance_after' => $balanceAfterTarget,
-                        'notes' => "Received from {$requisition->issuingLocation?->name} (Req: {$requisition->reference})",
-                        'reference_type' => Requisition::class,
-                        'reference_id' => $requisition->id
-                    ]);
-                }
-
                 // 3. Log Source Outflow
                 StockMovement::create([
                     'stock_batch_id' => $sourceBatch->id,
@@ -78,7 +43,7 @@ class IssueRequisitionAction
                     'quantity' => -$qty,
                     'balance_before' => $balanceBeforeSource,
                     'balance_after' => $balanceAfterSource,
-                    'notes' => "Issued to {$requisition->requestingLocation?->name} (Req: {$requisition->reference})",
+                    'notes' => "Issued to " . ($requisition->requestingLocation?->name ?? $requisition->requestingDepartment?->name) . " (Req: {$requisition->reference})",
                     'reference_type' => Requisition::class,
                     'reference_id' => $requisition->id
                 ]);

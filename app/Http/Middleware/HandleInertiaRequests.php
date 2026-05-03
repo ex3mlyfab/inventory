@@ -46,6 +46,11 @@ class HandleInertiaRequests extends Middleware
                 'permissions' => $user?->getAllPermissions()->pluck('name')->toArray() ?? [],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'branding' => [
+                'app_name' => \App\Models\Setting::get('app_name', config('app.name')),
+                'app_tagline' => \App\Models\Setting::get('app_tagline', 'Modern Inventory Management'),
+                'app_logo' => \App\Models\Setting::get('app_logo') ? asset('storage/' . \App\Models\Setting::get('app_logo')) : null,
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),

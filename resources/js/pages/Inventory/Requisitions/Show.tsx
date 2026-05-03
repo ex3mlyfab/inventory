@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,12 @@ import { Can } from '@/components/can';
 import {
     Requisition, RequisitionItem, RequisitionStatus,
 } from '@/types/inventory';
+import { Auth } from '@/types/auth';
 import {
     ArrowLeft, ArrowRightLeft, ShoppingCart, CheckCircle2,
     XCircle, Package, Building2, CalendarDays, User2,
     ClipboardList, Hash, AlertCircle, Clock,
-    Printer, Upload, FileText, Download,
+    Printer, Upload, FileText, Download, Plus,
 } from 'lucide-react';
 import { IssueItemsDialog } from './Partials/IssueItemsDialog';
 import { Separator } from '@/components/ui/separator';
@@ -48,6 +49,7 @@ interface Props {
 }
 
 export default function RequisitionShow({ requisition, canApproveL1, canApproveL2, canReject, canUpload }: Props) {
+    const { auth } = usePage<{ auth: Auth }>().props;
     const isInternal     = requisition.type === 'internal';
     const isDepartmental = requisition.type === 'departmental';
     const isPurchase     = requisition.type === 'purchase';
@@ -60,12 +62,14 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
     // ── Approve form ────────────────────────────────────────────────────
     const approveForm = useForm<{
         notes: string;
-        items: { id: string; quantity_approved: string }[];
+        items: { id: string; quantity_requested: string; quantity_approved: string; estimated_unit_cost: string }[];
     }>({
         notes: '',
         items: requisition.items.map((i) => ({
             id: i.id,
+            quantity_requested: String(i.quantity_requested),
             quantity_approved: String(i.quantity_approved || i.quantity_requested),
+            estimated_unit_cost: String(i.estimated_unit_cost || ''),
         })),
     });
 
@@ -112,6 +116,12 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
         });
     };
 
+    const handleReceive = () => {
+        if (window.confirm('Are you sure you have received these items? This will update your store/department inventory.')) {
+            router.post(`/procurement/requisitions/${requisition.id}/receive`);
+        }
+    };
+
     return (
         <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
             <Head title={`Requisition: ${requisition.reference}`} />
@@ -153,6 +163,18 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                     <Badge className="bg-amber-100 text-amber-700 animate-pulse border-0 font-bold px-3">Awaiting Signed Form</Badge>
                                 )}
                             </div>
+                        )}
+
+                        {/* Receipt Action for the requester */}
+                        {requisition.status === 'issued' && requisition.requested_by === auth.user?.id && (
+                            <Button 
+                                className="bg-success hover:bg-success/90 shadow-md shadow-success/20 h-8 text-[11px] font-black uppercase tracking-wider" 
+                                size="sm"
+                                onClick={handleReceive}
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                Confirm Receipt
+                            </Button>
                         )}
 
                         {/* Issuance Action for Store Officers at the issuing location */}
@@ -217,32 +239,65 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                         {approveForm.data.items.map((line, idx) => {
                                             const item = requisition.items[idx];
                                             return (
-                                                <div key={line.id} className="flex items-center gap-4 py-3 border-b border-border/30 last:border-0 hover:bg-success/10 px-2 rounded-lg transition-colors">
-                                                    <div className="flex-1">
-                                                        <p className="text-sm font-bold text-text-primary">{item.product?.name}</p>
-                                                        <p className="text-[10px] text-text-muted font-mono">{item.product?.sku}</p>
-                                                    </div>
-                                                    <div className="flex items-center gap-3 shrink-0">
-                                                        <div className="text-right">
-                                                            <p className="text-[10px] font-bold uppercase text-text-muted">Requested</p>
-                                                            <p className="text-xs font-bold">{item.quantity_requested}</p>
+                                                <div key={line.id} className="flex flex-col gap-3 py-4 border-b border-border/30 last:border-0 hover:bg-success/5 px-3 rounded-xl transition-all duration-200">
+                                                    <div className="flex justify-between items-start">
+                                                        <div className="flex-1">
+                                                            <p className="text-sm font-bold text-text-primary">{item.product?.name}</p>
+                                                            <p className="text-[10px] text-text-muted font-mono uppercase tracking-tight">{item.product?.sku}</p>
                                                         </div>
-                                                        <div className="h-4 w-[1px] bg-border/50" />
-                                                        <div className="w-28">
-                                                            <Label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Approved Qty</Label>
+                                                        <Badge variant="outline" className="bg-white text-[10px] font-bold h-5">
+                                                            {item.product?.unit_of_measure?.abbreviation}
+                                                        </Badge>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Requested Qty</Label>
+                                                            <Input
+                                                                type="number"
+                                                                min="1"
+                                                                value={line.quantity_requested}
+                                                                onChange={(e) => {
+                                                                    const updated = [...approveForm.data.items];
+                                                                    updated[idx] = { ...updated[idx], quantity_requested: e.target.value };
+                                                                    approveForm.setData('items', updated);
+                                                                }}
+                                                                className="h-9 bg-white border-border/50 focus-visible:ring-brand/20 font-bold"
+                                                            />
+                                                        </div>
+
+                                                        <div className="space-y-1.5">
+                                                            <Label className="text-[10px] font-bold uppercase text-brand mb-1 block">Approved Qty</Label>
                                                             <Input
                                                                 type="number"
                                                                 min="0"
-                                                                max={item.quantity_requested}
                                                                 value={line.quantity_approved}
                                                                 onChange={(e) => {
                                                                     const updated = [...approveForm.data.items];
                                                                     updated[idx] = { ...updated[idx], quantity_approved: e.target.value };
                                                                     approveForm.setData('items', updated);
                                                                 }}
-                                                                className="h-8 bg-white border-success/30 focus-visible:ring-success/20 font-bold"
+                                                                className="h-9 bg-white border-success/30 focus-visible:ring-success/20 font-black text-success"
                                                             />
                                                         </div>
+
+                                                        {isPurchase && (
+                                                            <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                                                                <Label className="text-[10px] font-bold uppercase text-text-muted mb-1 block">Est. Unit Cost (₦)</Label>
+                                                                <Input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    value={line.estimated_unit_cost}
+                                                                    onChange={(e) => {
+                                                                        const updated = [...approveForm.data.items];
+                                                                        updated[idx] = { ...updated[idx], estimated_unit_cost: e.target.value };
+                                                                        approveForm.setData('items', updated);
+                                                                    }}
+                                                                    className="h-9 bg-white border-border/50 focus-visible:ring-brand/20 font-bold"
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -520,7 +575,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                     )}
 
                     {/* Cancellation for requester */}
-                    {requisition.status === 'submitted' && requisition.requested_by === router.page.props.auth.user.id && (
+                    {requisition.status === 'submitted' && requisition.requested_by === auth.user?.id && (
                          <div className="px-2">
                              <Button
                                 variant="ghost"

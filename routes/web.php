@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\DepartmentController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Inventory\InitialAllocationController;
+use App\Http\Controllers\Inventory\HoldingsController;
 use App\Http\Controllers\Inventory\RequisitionController;
 use App\Http\Controllers\Inventory\StockAdjustmentController;
 use App\Http\Controllers\Inventory\StockTakeController;
@@ -36,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::resource('departments', DepartmentController::class)->except(['show', 'create', 'edit']);
         Route::get('settings', [\App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings.index');
         Route::post('settings', [\App\Http\Controllers\Admin\SettingsController::class, 'update'])->name('settings.update');
+        Route::get('branding', [\App\Http\Controllers\Admin\BrandingController::class, 'index'])->name('branding.index');
+        Route::post('branding', [\App\Http\Controllers\Admin\BrandingController::class, 'update'])->name('branding.update');
     });
 
     // === INVENTORY ===
@@ -57,6 +60,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Stock
         Route::get('stock', [\App\Http\Controllers\Inventory\StockController::class, 'index'])->name('stock.index');
         Route::get('stock/{product}/batches', [\App\Http\Controllers\Inventory\StockController::class, 'batches'])->name('stock.batches');
+        Route::get('holdings', [HoldingsController::class, 'index'])->name('holdings.index');
         
         // Adjustments
         Route::get('stock-adjustments/search-batches', [StockAdjustmentController::class, 'searchBatches'])->name('stock-adjustments.search-batches');
@@ -80,6 +84,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Movements
         Route::get('stock-movements', [\App\Http\Controllers\Inventory\StockMovementController::class, 'index'])->name('stock-movements.index');
+
+        // Departmental Stores Oversight
+        Route::get('departmental-stores', [\App\Http\Controllers\Inventory\DepartmentalStoreController::class, 'index'])->name('departmental-stores.index');
+    });
+
+    // === EQUIPMENT & ASSETS ===
+    Route::prefix('equipment')->name('equipment.')->group(function () {
+        Route::resource('assets', \App\Http\Controllers\Equipment\AssetController::class);
+        Route::resource('maintenance', \App\Http\Controllers\Equipment\MaintenanceController::class)->only(['index', 'store', 'show']);
+        Route::resource('work-orders', \App\Http\Controllers\Equipment\WorkOrderController::class)->only(['index', 'store', 'update', 'show']);
+        Route::get('calibration', [\App\Http\Controllers\Equipment\MaintenanceController::class, 'index'])->name('calibration.index'); // Reusing maintenance for now
     });
 
     // === PROCUREMENT ===
@@ -99,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('requisitions', [RequisitionController::class, 'store'])->name('requisitions.store');
         Route::get('requisitions/{requisition}', [RequisitionController::class, 'show'])->name('requisitions.show');
         Route::post('requisitions/{requisition}/issue', [RequisitionController::class, 'issue'])->name('requisitions.issue');
+        Route::post('requisitions/{requisition}/receive', [RequisitionController::class, 'receive'])->name('requisitions.receive');
         Route::get('requisitions/{requisition}/print', [RequisitionController::class, 'printReleaseForm'])->name('requisitions.print');
         Route::post('requisitions/{requisition}/upload-release-form', [RequisitionController::class, 'uploadReleaseForm'])->name('requisitions.upload-release-form');
         Route::post('requisitions/{requisition}/approve/level1', [RequisitionController::class, 'approveLevel1'])->name('requisitions.approve.l1');

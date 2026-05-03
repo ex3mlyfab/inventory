@@ -83,6 +83,11 @@ export function AppSidebar() {
                     permission: 'stock.view',
                 },
                 {
+                    title: 'My Holdings',
+                    href: '/inventory/holdings',
+                    permission: 'stock.view',
+                },
+                {
                     title: 'Stock Movements',
                     href: '/inventory/stock-movements',
                     permission: 'stock.movements.view',
@@ -106,6 +111,11 @@ export function AppSidebar() {
                     title: 'Stock Count',
                     href: '/inventory/stock-count',
                     permission: 'stock.count',
+                },
+                {
+                    title: 'Departmental Stores',
+                    href: '/inventory/departmental-stores',
+                    permission: 'stock.view',
                 },
             ],
         },
@@ -144,29 +154,7 @@ export function AppSidebar() {
             ],
         },
 
-        // ─── Dispensing ─────────────────────────────────────────
-        {
-            title: 'Dispensing',
-            href: '/dispensing/ward-requisitions',
-            icon: Pill,
-            children: [
-                {
-                    title: 'Ward Requisitions',
-                    href: '/dispensing/ward-requisitions',
-                    permission: 'ward-requisitions.create',
-                },
-                {
-                    title: 'Dispense Records',
-                    href: '/dispensing/records',
-                    permission: 'dispensing.view',
-                },
-                {
-                    title: 'Controlled Substances',
-                    href: '/dispensing/controlled',
-                    permission: 'controlled-substances.manage',
-                },
-            ],
-        },
+
 
         // ─── Equipment & Assets ─────────────────────────────────
         {
@@ -245,6 +233,11 @@ export function AppSidebar() {
                 {
                     title: 'System Settings',
                     href: '/admin/settings',
+                    permission: 'settings.manage',
+                },
+                {
+                    title: 'Branding',
+                    href: '/admin/branding',
                     permission: 'settings.manage',
                 },
             ],

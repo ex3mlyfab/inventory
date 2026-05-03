@@ -62,12 +62,7 @@ class RolePermissionSeeder extends Seeder
             'grn.create',
             'grn.approve',
 
-            // Dispensing
-            'dispensing.view',
-            'dispensing.create',
-            'ward-requisitions.create',
-            'ward-requisitions.approve',
-            'controlled-substances.manage',
+
 
             // Equipment & Assets
             'assets.view',
@@ -111,8 +106,7 @@ class RolePermissionSeeder extends Seeder
             'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
             'purchase-orders.view', 'purchase-orders.approve.l1',
             'grn.view', 'grn.create', 'grn.approve',
-            'dispensing.view',
-            'ward-requisitions.approve',
+
             'assets.view', 'assets.manage',
             'maintenance.view',
             'reports.view', 'reports.export',
@@ -151,9 +145,7 @@ class RolePermissionSeeder extends Seeder
             'products.view',
             'stock.view', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
             'requisitions.view', 'requisitions.create', 'requisitions.cancel',
-            'dispensing.view', 'dispensing.create',
-            'ward-requisitions.approve',
-            'controlled-substances.manage',
+
             'reports.view',
         ]);
 
@@ -163,8 +155,7 @@ class RolePermissionSeeder extends Seeder
             'products.view',
             'stock.view', 'stock.movements.view',
             'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
-            'dispensing.view',
-            'ward-requisitions.create',
+
             'assets.view',
             'maintenance.view',
             'reports.view',
@@ -200,7 +191,7 @@ class RolePermissionSeeder extends Seeder
             'suppliers.view',
             'purchase-orders.view',
             'grn.view',
-            'dispensing.view',
+
             'assets.view',
             'maintenance.view',
             'reports.view', 'reports.export',

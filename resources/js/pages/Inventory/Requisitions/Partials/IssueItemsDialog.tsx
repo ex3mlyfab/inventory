@@ -21,6 +21,7 @@ import {
 import { Requisition, RequisitionItem, StockBatch } from '@/types/inventory';
 import { Loader2, Package, CheckCircle2, AlertCircle, Hash, Search } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -45,7 +46,8 @@ export function IssueItemsDialog({ isOpen, onClose, requisition }: Props) {
     const [isLoadingBatches, setIsLoadingBatches] = useState(false);
 
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
-        issuances: [] as { requisition_item_id: string, stock_batch_id: string, quantity: number }[]
+        issuances: [] as { requisition_item_id: string, stock_batch_id: string, quantity: number }[],
+        release_form: null as File | null
     });
 
     useEffect(() => {
@@ -205,6 +207,22 @@ export function IssueItemsDialog({ isOpen, onClose, requisition }: Props) {
                                         </div>
                                     </div>
                                 ))}
+                                {rows.length > 0 && (
+                                    <div className="p-4 bg-amber-50/50 rounded-xl border border-amber-200/50 space-y-2">
+                                        <Label className="text-[10px] font-black uppercase tracking-widest text-amber-700 flex items-center gap-1.5">
+                                            <Search className="h-3 w-3" /> Proof of Issuance
+                                        </Label>
+                                        <Input 
+                                            type="file" 
+                                            className="h-10 bg-white border-amber-200 file:text-[10px] file:font-bold file:uppercase file:bg-amber-100 file:border-0 file:rounded file:px-2 file:mr-2"
+                                            onChange={(e) => setData('release_form', e.target.files?.[0] || null)}
+                                            accept="image/*,.pdf"
+                                        />
+                                        <p className="text-[9px] text-amber-600 font-bold leading-tight">
+                                            Optional: Upload the signed release form now to mark the movement as fully documented.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                         )}
 

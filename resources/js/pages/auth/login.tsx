@@ -117,6 +117,6 @@ export default function Login({
 }
 
 Login.layout = {
-    title: 'Log in to MedStock',
-    description: 'Enter your credentials to access the inventory system',
+    title: 'Log in',
+    description: 'Enter your credentials to access the system',
 };

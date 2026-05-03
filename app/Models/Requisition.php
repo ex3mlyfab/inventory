@@ -155,7 +155,18 @@ class Requisition extends Model
             if (! $deptId) return false;
 
             $department = Department::find($deptId);
-            return $department?->head_user_id === $user->id;
+            
+            // Allow if user is explicit department head
+            if ($department?->head_user_id === $user->id) {
+                return true;
+            }
+
+            // Allow if user belongs to the department AND has the Ward/Dept Head role
+            if ($user->department_id === $deptId && $user->hasRole('Ward/Dept Head')) {
+                return true;
+            }
+
+            return false;
         }
 
         // Purchase: Procurement Officer or Inventory Manager

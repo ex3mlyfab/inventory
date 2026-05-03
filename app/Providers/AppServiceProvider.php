@@ -26,8 +26,26 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuthorization();
+        $this->configureBranding();
         
         \App\Models\StockBatch::observe(\App\Observers\StockBatchObserver::class);
+    }
+
+    /**
+     * Overwrite config with values from settings table.
+     */
+    protected function configureBranding(): void
+    {
+        try {
+            if (\Schema::hasTable('settings')) {
+                $appName = \App\Models\Setting::get('app_name');
+                if ($appName) {
+                    config(['app.name' => $appName]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Silence if DB is not ready
+        }
     }
 
     /**

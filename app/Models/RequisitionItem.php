@@ -16,6 +16,7 @@ class RequisitionItem extends Model
         'product_id',
         'quantity_requested',
         'quantity_on_hand',
+        'quantity_used',
         'quantity_approved',
         'quantity_issued',
         'estimated_unit_cost',

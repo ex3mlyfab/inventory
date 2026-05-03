@@ -81,7 +81,7 @@ class DashboardController extends Controller
         ->values();
 
         // 7. Recent Activity (Scoped by joining with StockBatch if not Super Admin)
-        $activityQuery = StockMovement::with(['product', 'user']);
+        $activityQuery = StockMovement::with(['batch.product', 'user']);
         
         if (!$isSuperAdmin && $locationId) {
             $activityQuery->join('stock_batches', 'stock_movements.stock_batch_id', '=', 'stock_batches.id')
@@ -97,7 +97,7 @@ class DashboardController extends Controller
                     'id' => $movement->id,
                     'type' => $movement->type,
                     'quantity' => $movement->quantity,
-                    'product_name' => $movement->product->name,
+                    'product_name' => $movement->batch->product->name ?? 'Unknown Product',
                     'user_name' => $movement->user->name,
                     'created_at' => $movement->created_at->diffForHumans(),
                     'reference' => $movement->reference_id ?? $movement->reference,

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 class AdjustStockAction
 {
-    public function execute(StockAdjustment $adjustment, int $approverId): void
+    public function execute(StockAdjustment $adjustment, string $approverId): void
     {
         DB::transaction(function () use ($adjustment, $approverId) {
             $batch = $adjustment->batch;

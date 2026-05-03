@@ -77,6 +77,7 @@ class InitialAllocationController extends Controller
                     ],
                     [
                         'quantity_on_hand' => 0,
+                        'quantity_received' => 0,
                         'unit_cost' => $item['unit_cost'] ?? 0,
                     ]
                 );
@@ -87,6 +88,7 @@ class InitialAllocationController extends Controller
 
                 // 2. Update Batch Quantity
                 $batch->increment('quantity_on_hand', $quantityToAdd);
+                $batch->increment('quantity_received', $quantityToAdd);
 
                 // 3. Log Movement
                 StockMovement::create([
