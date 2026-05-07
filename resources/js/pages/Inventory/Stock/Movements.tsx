@@ -1,15 +1,16 @@
 import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column, PaginationMeta } from '@/Components/shared/data-table';
+import AppLayout from '@/layouts/app-layout';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column, PaginationMeta } from '@/components/shared/data-table';
 import { StockMovement, MovementType, StorageLocationBasic } from '@/types/inventory';
-import { Badge } from '@/Components/ui/badge';
-import { Card, CardContent } from '@/Components/ui/card';
-import { Input } from '@/Components/ui/input';
-import { Button } from '@/Components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { 
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from '@/Components/ui/select';
+} from '@/components/ui/select';
 import { 
     Search, Filter, X, ArrowUpRight, ArrowDownLeft, 
     ArrowRightLeft, Settings2, Calendar, MapPin, Package, User
@@ -182,7 +183,7 @@ export default function StockMovements({ movements, locations, filters }: Props)
                                     <SelectContent>
                                         <SelectItem value="all">Every Type</SelectItem>
                                         <SelectItem value="in">Restock (In)</SelectItem>
-                                        <SelectItem value="out">Dispensed (Out)</SelectItem>
+                                        <SelectItem value="out">Issued (Out)</SelectItem>
                                         <SelectItem value="transfer">Transfer</SelectItem>
                                         <SelectItem value="adjustment">Adjustment</SelectItem>
                                         <SelectItem value="disposal">Disposal</SelectItem>
@@ -255,10 +256,11 @@ export default function StockMovements({ movements, locations, filters }: Props)
     );
 }
 
+// @ts-ignore
 StockMovements.layout = {
     breadcrumbs: [
         { title: 'Inventory' , href: '#' },
-        { title: 'Stock Logs' , href: '#' },
-        { title: 'Audit Trail' , href: '#' }
-    ],
+        { title: 'Stock Logs' , href: '/inventory/stock-movements' },
+        { title: 'Audit Trail' , href: '/inventory/stock-movements' }
+    ]
 };

@@ -1,4 +1,5 @@
 import { Head, usePage } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatCard } from '@/components/shared/stat-card';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -235,11 +236,12 @@ export default function Dashboard({
     );
 }
 
+// @ts-ignore
 Dashboard.layout = {
     breadcrumbs: [
         {
             title: 'Dashboard',
             href: dashboard(),
         },
-    ],
+    ]
 };

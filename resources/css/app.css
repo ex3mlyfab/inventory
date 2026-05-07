@@ -78,6 +78,9 @@
     --color-brand: var(--primary);
     --color-brand-foreground: var(--primary-foreground);
     --color-brand-dark: #004C3F;
+
+    --color-success: var(--primary);
+    --color-success-foreground: var(--primary-foreground);
 }
 
 /*

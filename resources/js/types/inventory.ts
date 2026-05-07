@@ -168,6 +168,7 @@ export type RequisitionStatus =
     | 'approved'
     | 'partially_issued'
     | 'issued'
+    | 'in_transit'
     | 'rejected'
     | 'cancelled';
 
@@ -216,11 +217,16 @@ export interface Requisition {
     level2_approved_at: string | null;
     level2_notes: string | null;
 
+    // Movement Tracking
+    release_form_path: string | null;
+    collector_name: string | null;
+    collector_signature_path: string | null;
+
     // Legacy/Sync field
     approved_by: string | null;
 
     // Relations
-    requester?: { id: string; name: string };
+    requester?: { id: string; name: string; department?: { id: string; name: string } | null };
     approver?: { id: string; name: string } | null; // mirrors level2
     level1_approver?: { id: string; name: string } | null;
     level2_approver?: { id: string; name: string } | null;

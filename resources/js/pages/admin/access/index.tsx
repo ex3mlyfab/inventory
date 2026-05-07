@@ -60,7 +60,7 @@ const moduleLabels: Record<string, string> = {
     locations: 'Storage & Logistics',
     stock: 'Stock Operations',
     procurement: 'Financial / Procurement',
-    dispensing: 'Clinical Dispensing',
+
     users: 'User Management',
     roles: 'Security & Access',
     reports: 'Reporting & Analytics',

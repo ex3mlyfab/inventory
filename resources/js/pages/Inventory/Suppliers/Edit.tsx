@@ -16,7 +16,7 @@ export default function SupplierEdit({ supplier, categories }: Props) {
             <Head title={`Edit Supplier: ${supplier.name}`} />
 
             <div className="flex flex-col gap-4">
-                <Link href={`/procurement/suppliers/${supplier.id}`} className="flex items-center text-sm text-text-muted hover:text-brand transition-colors w-fit">
+                <Link href={`/inventory/suppliers/${supplier.id}`} className="flex items-center text-sm text-text-muted hover:text-brand transition-colors w-fit">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Details
                 </Link>
@@ -35,8 +35,8 @@ export default function SupplierEdit({ supplier, categories }: Props) {
 // @ts-ignore
 SupplierEdit.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
-        { title: 'Supplier Network', href: '/procurement/suppliers' },
+        { title: 'Inventory', href: '/inventory/stock' },
+        { title: 'Supplier Network', href: '/inventory/suppliers' },
         { title: 'Edit Profile', href: '#' }
     ],
 };

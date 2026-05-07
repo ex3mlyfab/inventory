@@ -1,4 +1,5 @@
 import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
+import { useSessionKeepAlive } from '@/hooks/use-session-keep-alive';
 
 export default function AuthLayout({
     title = '',
@@ -9,6 +10,8 @@ export default function AuthLayout({
     description?: string;
     children: React.ReactNode;
 }) {
+    useSessionKeepAlive();
+
     return (
         <AuthLayoutTemplate title={title} description={description}>
             {children}

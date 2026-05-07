@@ -86,7 +86,7 @@ class SupplierController extends Controller
 
         Supplier::create($validated);
 
-        return redirect()->route('procurement.suppliers.index')
+        return redirect()->route('inventory.suppliers.index')
             ->with('success', 'Supplier created successfully.');
     }
 
@@ -131,7 +131,7 @@ class SupplierController extends Controller
 
         $supplier->update($validated);
 
-        return redirect()->route('procurement.suppliers.index')
+        return redirect()->route('inventory.suppliers.index')
             ->with('success', 'Supplier updated successfully.');
     }
 
@@ -141,7 +141,7 @@ class SupplierController extends Controller
 
         $supplier->delete();
 
-        return redirect()->route('procurement.suppliers.index')
+        return redirect()->route('inventory.suppliers.index')
             ->with('success', 'Supplier deleted successfully.');
     }
 }

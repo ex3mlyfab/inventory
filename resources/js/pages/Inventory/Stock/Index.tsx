@@ -1,22 +1,22 @@
 import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column } from '@/Components/shared/data-table';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { Product, PaginationMeta, StorageLocationBasic, Department } from '@/types/inventory';
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent } from '@/Components/ui/card';
-import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { 
     ArrowRightLeft, SlidersHorizontal, Package, 
     AlertTriangle, Calendar, TrendingUp, Search,
     Filter, X, Building2, Store, BarChart3
 } from 'lucide-react';
 import { StockLevelIndicator } from '../Components/StockLevelIndicator';
-import { Can } from '@/Components/can';
-import { Input } from '@/Components/ui/input';
+import { Can } from '@/components/can';
+import { Input } from '@/components/ui/input';
 import { 
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from '@/Components/ui/select';
+} from '@/components/ui/select';
 
 interface Stats {
     total_items: number;

@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column } from '@/Components/shared/data-table';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { UnitOfMeasure } from '@/types/inventory';
-import { Button } from '@/Components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Plus, Ruler, Edit2, Trash2, Scale, Search, X, MoreHorizontal } from 'lucide-react';
-import { Can } from '@/Components/can';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/Components/ui/dialog';
-import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
-import InputError from '@/Components/input-error';
+import { Can } from '@/components/can';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import InputError from '@/components/input-error';
 import { 
     DropdownMenu, 
     DropdownMenuContent, 
@@ -17,9 +17,9 @@ import {
     DropdownMenuLabel, 
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
-} from '@/Components/ui/dropdown-menu';
-import { ConfirmationDialog } from '@/Components/shared/confirmation-dialog';
-import { Badge } from '@/Components/ui/badge';
+} from '@/components/ui/dropdown-menu';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { Badge } from '@/components/ui/badge';
 import { useDebounce } from '@/hooks/use-debounce';
 
 interface Props {

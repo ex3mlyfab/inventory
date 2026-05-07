@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Input } from '@/Components/ui/input';
+import { Input } from '@/components/ui/input';
 import { Search } from 'lucide-react';
 import { router } from '@inertiajs/react';
 

@@ -284,14 +284,11 @@ export default function ExportCenter({ reportTypes }: Props) {
     );
 }
 
-ExportCenter.layout = (page: React.ReactNode) => (
-    <AppLayout
-        breadcrumbs={[
-            { title: 'Dashboard', href: '/' },
-            { title: 'Reports', href: '/reports' },
-            { title: 'Export Center', href: '/reports/export' },
-        ]}
-    >
-        {page}
-    </AppLayout>
-);
+// @ts-ignore
+ExportCenter.layout = {
+    breadcrumbs: [
+        { title: 'Dashboard', href: '/' },
+        { title: 'Reports', href: '/reports' },
+        { title: 'Export Center', href: '/reports/export' },
+    ]
+};

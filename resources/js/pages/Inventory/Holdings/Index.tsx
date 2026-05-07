@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from '@/components/shared/page-header';
 import { DataTable, Column } from '@/components/shared/data-table';
 import { Product, PaginationMeta } from '@/types/inventory';
@@ -199,9 +200,10 @@ export default function HoldingsIndex({
 );
 }
 
+// @ts-ignore
 HoldingsIndex.layout = {
     breadcrumbs: [
         { title: 'Inventory' , href: '#' },
-        { title: 'My Holdings' , href: '#' }
-    ],
+        { title: 'My Holdings' , href: '/inventory/holdings' }
+    ]
 };

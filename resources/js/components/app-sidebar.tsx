@@ -123,17 +123,17 @@ export function AppSidebar() {
         // ─── Procurement ────────────────────────────────────────
         {
             title: 'Procurement',
-            href: '/procurement/suppliers',
+            href: '/procurement/grn',
             icon: ClipboardList,
             children: [
                 {
                     title: 'Supplier Directory',
-                    href: '/procurement/suppliers',
+                    href: '/inventory/suppliers',
                     permission: 'suppliers.view',
                 },
                 {
                     title: 'Supplier Insights',
-                    href: '/procurement/suppliers/dashboard',
+                    href: '/inventory/suppliers/dashboard',
                     permission: 'suppliers.view',
                 },
                 {

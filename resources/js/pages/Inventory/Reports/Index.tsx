@@ -182,20 +182,25 @@ export default function ReportsDashboard({ stats, movementData, categoryData, ca
                         <CardContent className="p-8">
                             <div className="flex justify-between items-start mb-6">
                                 <div>
-                                    <h3 className="text-2xl font-bold mb-2">Generate Reports</h3>
+                                    <h3 className="text-2xl font-bold mb-2">Insights Viewer</h3>
                                     <p className="text-indigo-100 text-sm opacity-90 leading-relaxed">
-                                        Access the Export Center to generate itemized valuation, 
-                                        expiry schedules, and consumption patterns.
+                                        Analyze real-time data with advanced filters for movements, 
+                                        consumption, and store distribution.
                                     </p>
                                 </div>
                                 <div className="bg-white/20 p-3 rounded-2xl backdrop-blur-sm">
                                     <BarChart3 className="h-8 w-8 text-white" />
                                 </div>
                             </div>
-                            <a href="/reports/export" className="inline-flex items-center justify-center bg-white text-indigo-700 font-bold px-6 py-3 rounded-xl hover:bg-indigo-50 transition-all shadow-md group">
-                                Go to Export Center
-                                <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                            </a>
+                            <div className="flex flex-wrap gap-4">
+                                <Link href="/reports/viewer" className="inline-flex items-center justify-center bg-white text-indigo-700 font-bold px-6 py-3 rounded-xl hover:bg-indigo-50 transition-all shadow-md group">
+                                    Launch Viewer
+                                    <ArrowUpRight className="ml-2 h-4 w-4 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                                </Link>
+                                <Link href="/reports/export" className="inline-flex items-center justify-center bg-indigo-500/30 text-white font-bold px-6 py-3 rounded-xl hover:bg-indigo-500/50 transition-all border border-white/20">
+                                    Export Center
+                                </Link>
+                            </div>
                         </CardContent>
                     </Card>
                 </Can>
@@ -227,13 +232,10 @@ export default function ReportsDashboard({ stats, movementData, categoryData, ca
     );
 }
 
-ReportsDashboard.layout = (page: React.ReactNode) => (
-    <AppLayout
-        breadcrumbs={[
-            { title: 'Dashboard', href: '/' },
-            { title: 'Reports & Analytics', href: '/reports' },
-        ]}
-    >
-        {page}
-    </AppLayout>
-);
+// @ts-ignore
+ReportsDashboard.layout = {
+    breadcrumbs: [
+        { title: 'Dashboard', href: '/' },
+        { title: 'Reports & Analytics', href: '/reports' },
+    ]
+};

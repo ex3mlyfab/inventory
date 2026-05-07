@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column } from '@/Components/shared/data-table';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { StockAdjustment, PaginationMeta } from '@/types/inventory';
-import { Button } from '@/Components/ui/button';
-import { Badge } from '@/Components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Plus, Check, X } from 'lucide-react';
-import { ConfirmationDialog } from '@/Components/shared/confirmation-dialog';
-import { Can } from '@/Components/can';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { Can } from '@/components/can';
 import { AdjustmentDialog } from './Partials/AdjustmentDialog';
-import { StatCard } from '@/Components/shared/stat-card';
+import { StatCard } from '@/components/shared/stat-card';
 import { Layers, History, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface Props {

@@ -24,7 +24,7 @@ export default function SupplierShow({ supplier }: Props) {
             <Head title={`Supplier: ${supplier.name}`} />
 
             <div className="flex flex-col gap-4">
-                <Link href="/procurement/suppliers" className="flex items-center text-sm text-text-muted hover:text-brand transition-colors w-fit">
+                <Link href="/inventory/suppliers" className="flex items-center text-sm text-text-muted hover:text-brand transition-colors w-fit">
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back to Directory
                 </Link>
@@ -38,7 +38,7 @@ export default function SupplierShow({ supplier }: Props) {
                             {supplier.status}
                         </Badge>
                         <Can permission="suppliers.edit">
-                            <Link href={`/procurement/suppliers/${supplier.id}/edit`}>
+                            <Link href={`/inventory/suppliers/${supplier.id}/edit`}>
                                 <Button className="bg-brand hover:bg-brand-dark text-brand-foreground shadow-md transition-all">
                                     <Edit2 className="w-4 h-4 mr-2" />
                                     Edit Supplier
@@ -200,8 +200,8 @@ export default function SupplierShow({ supplier }: Props) {
 // @ts-ignore
 SupplierShow.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
-        { title: 'Supplier Network', href: '/procurement/suppliers' },
+        { title: 'Inventory', href: '/inventory/stock' },
+        { title: 'Supplier Network', href: '/inventory/suppliers' },
         { title: 'Details', href: '#' }
     ],
 };

@@ -33,13 +33,13 @@ export default function SupplierDashboard({ stats }: Props) {
                 description="Strategic overview of vendors, procurement performance, and partnership status."
             >
                 <div className="flex items-center gap-3">
-                    <Link href="/procurement/suppliers">
+                    <Link href="/inventory/suppliers">
                         <Button variant="outline" className="border-brand/20 text-brand hover:bg-brand/5 transition-all">
                             View All Suppliers
                         </Button>
                     </Link>
                     <Can permission="suppliers.create">
-                        <Link href="/procurement/suppliers/create">
+                        <Link href="/inventory/suppliers/create">
                             <Button className="bg-brand hover:bg-brand-dark text-brand-foreground shadow-md transition-all">
                                 <Plus className="w-4 h-4 mr-2" />
                                 Register New
@@ -130,7 +130,7 @@ export default function SupplierDashboard({ stats }: Props) {
                             {stats.recent.length > 0 ? stats.recent.map(supplier => (
                                 <Link 
                                     key={supplier.id}
-                                    href={`/procurement/suppliers/${supplier.id}`}
+                                    href={`/inventory/suppliers/${supplier.id}`}
                                     className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors group"
                                 >
                                     <div className="h-10 w-10 rounded-xl bg-brand/5 border border-brand/10 flex items-center justify-center shrink-0 text-brand group-hover:scale-110 transition-transform">
@@ -149,7 +149,7 @@ export default function SupplierDashboard({ stats }: Props) {
                             )}
                         </div>
                         <div className="p-4 bg-muted/20 border-t border-border/50">
-                            <Link href="/procurement/suppliers" className="text-[11px] font-bold text-brand hover:underline flex items-center justify-center uppercase tracking-wider">
+                            <Link href="/inventory/suppliers" className="text-[11px] font-bold text-brand hover:underline flex items-center justify-center uppercase tracking-wider">
                                 View Full Directory
                                 <ArrowRight className="ml-1 h-3 w-3" />
                             </Link>
@@ -167,7 +167,7 @@ export default function SupplierDashboard({ stats }: Props) {
                         <h3 className="text-3xl font-bold mb-3">Strategic Partnering</h3>
                         <p className="text-brand-foreground/80 mb-8 max-w-md text-sm leading-relaxed">Optimize your procurement lifecycle by maintaining a robust and verified supplier database for FMC Abuja.</p>
                         <Can permission="suppliers.create">
-                            <Link href="/procurement/suppliers/create">
+                            <Link href="/inventory/suppliers/create">
                                 <Button className="bg-white text-brand hover:bg-white/90 shadow-xl font-bold h-11 px-8 rounded-xl">
                                     Start Registration
                                 </Button>
@@ -205,8 +205,8 @@ export default function SupplierDashboard({ stats }: Props) {
 // @ts-ignore
 SupplierDashboard.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
-        { title: 'Suppliers Overview', href: '/procurement/suppliers' },
+        { title: 'Inventory', href: '/inventory/stock' },
+        { title: 'Suppliers Overview', href: '/inventory/suppliers' },
         { title: 'Strategic Insights', href: '#' }
     ],
 };

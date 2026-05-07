@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
+import { PageHeader } from '@/components/shared/page-header';
 import { 
     Users, 
     Package, 
@@ -16,9 +16,9 @@ import {
     Filter,
     UserPlus
 } from 'lucide-react';
-import { Button } from '@/Components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/Components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
     Dialog, 
     DialogContent, 
@@ -26,7 +26,7 @@ import {
     DialogTitle, 
     DialogFooter, 
     DialogDescription 
-} from '@/Components/ui/dialog';
+} from '@/components/ui/dialog';
 import { 
     Table, 
     TableBody, 
@@ -34,11 +34,11 @@ import {
     TableHead, 
     TableHeader, 
     TableRow 
-} from '@/Components/ui/table';
-import { Checkbox } from '@/Components/ui/checkbox';
-import { StatusBadge } from '@/Components/shared/status-badge';
+} from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { StatusBadge } from '@/components/shared/status-badge';
 import { format } from 'date-fns';
-import { Badge } from '@/Components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 interface Props {

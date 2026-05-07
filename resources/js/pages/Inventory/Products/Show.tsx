@@ -25,18 +25,18 @@ import {
     Area
 } from 'recharts';
 
-import { PageHeader } from '@/Components/shared/page-header';
+import { PageHeader } from '@/components/shared/page-header';
 import { Product, StockBatch, StockMovement } from '@/types/inventory';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/Components/ui/card';
-import { Button } from '@/Components/ui/button';
-import { Badge } from '@/Components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/Components/ui/tabs';
-import { StatCard } from '@/Components/shared/stat-card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { StatCard } from '@/components/shared/stat-card';
 import { ExpiryBadge } from '../Components/ExpiryBadge';
-import { DataTable, Column } from '@/Components/shared/data-table';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { StockLevelIndicator } from '../Components/StockLevelIndicator';
 import { format } from 'date-fns';
-import { Can } from '@/Components/can';
+import { Can } from '@/components/can';
 
 interface Props {
     product: Product;

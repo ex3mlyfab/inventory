@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
+import { Combobox } from '@/components/ui/combobox';
 import type { Department, Role, User } from '@/types/auth';
 import { ArrowLeft } from 'lucide-react';
 
@@ -99,18 +100,16 @@ export default function EditUser({ user, userRoles, roles, departments }: Props)
                         <h3 className="mb-4 text-sm font-semibold text-[#181d1a]">Department Assignment</h3>
                         <div className="space-y-1.5">
                             <Label htmlFor="department_id" className="text-xs font-medium text-[#202223]">Department</Label>
-                            <Select value={data.department_id} onValueChange={(v) => setData('department_id', v)}>
-                                <SelectTrigger className="border-[#babfc3]">
-                                    <SelectValue placeholder="Select a department" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {departments.map((dept) => (
-                                        <SelectItem key={dept.id} value={String(dept.id)}>
-                                            {dept.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <Combobox
+                                options={departments.map((dept) => ({
+                                    label: dept.name,
+                                    value: String(dept.id),
+                                }))}
+                                value={data.department_id}
+                                onChange={(value) => setData('department_id', value)}
+                                placeholder="Search and select a department"
+                                emptyMessage="No department found."
+                            />
                             {errors.department_id && <p className="text-xs text-[#D82C0D]">{errors.department_id}</p>}
                         </div>
                     </div>

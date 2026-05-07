@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -49,6 +50,119 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
 
     const filter = (updates: Record<string, string | undefined>) =>
         router.get('/procurement/requisitions', { ...filters, ...updates }, { preserveState: true });
+
+    const columns: Column<Requisition>[] = [
+        {
+            header: 'Type',
+            cell: (req) => (
+                <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+                    req.type === 'internal'
+                        ? 'bg-brand/10 text-brand'
+                        : 'bg-amber-50 text-amber-700'
+                }`}>
+                    {TYPE_ICONS[req.type]}
+                </div>
+            )
+        },
+        {
+            header: 'Reference / Purpose',
+            cell: (req) => (
+                <Link href={`/procurement/requisitions/${req.id}`} className="block group">
+                    <p className="text-sm font-bold font-mono text-text-primary group-hover:text-brand transition-colors">{req.reference}</p>
+                    <p className="text-[11px] text-text-muted truncate mt-0.5">{req.purpose ?? '—'}</p>
+                </Link>
+            )
+        },
+        {
+            header: 'Route / Supplier',
+            cell: (req) => (
+                req.type === 'internal' ? (
+                    <div className="flex items-center gap-1.5 text-text-secondary">
+                        <span className="truncate font-semibold text-[11px] bg-muted/50 px-1.5 py-0.5 rounded" title={req.requesting_location?.name}>
+                            {req.requesting_location?.name ?? '—'}
+                        </span>
+                        <ArrowRightLeft className="h-3 w-3 text-text-muted shrink-0" />
+                        <span className="truncate text-[11px] bg-muted/20 px-1.5 py-0.5 rounded" title={req.issuing_location?.name}>
+                            {req.issuing_location?.name ?? '—'}
+                        </span>
+                    </div>
+                ) : (
+                    <span className="text-xs text-text-secondary font-medium">{req.supplier?.name ?? <em className="text-text-muted italic font-normal">Preferred Supplier: None</em>}</span>
+                )
+            )
+        },
+        {
+            header: 'Requester',
+            cell: (req) => {
+                const deptName = req.requesting_department?.name 
+                    || req.requesting_location?.department?.name 
+                    || req.requester?.department?.name;
+                
+                return (
+                    <div>
+                        <p className="text-[13px] font-bold text-text-primary leading-tight">{req.requester?.name ?? '—'}</p>
+                        {deptName && <p className="text-[10px] font-medium text-brand/80 mt-0.5">{deptName}</p>}
+                        <p className="text-[10px] text-text-muted mt-0.5">{new Date(req.created_at).toLocaleDateString('en-NG', { dateStyle: 'medium' })}</p>
+                    </div>
+                );
+            }
+        },
+        {
+            header: 'Items',
+            className: 'text-center',
+            cell: (req) => (
+                <div className="flex justify-center">
+                    <span className="text-sm font-extrabold text-text-primary bg-muted/30 px-2.5 py-1 rounded-full">{req.items?.length ?? 0}</span>
+                </div>
+            )
+        },
+        {
+            header: 'Status',
+            className: 'text-center',
+            cell: (req) => (
+                <div className="flex justify-center">
+                    <Badge variant="outline" className={`text-[10px] font-bold capitalize whitespace-nowrap ${STATUS_STYLES[req.status]}`}>
+                        {req.status.replace('_', ' ').replace('level1', 'Dept').replace('level2', 'MD')}
+                    </Badge>
+                </div>
+            )
+        },
+        {
+            header: '',
+            className: 'text-right min-w-[50px]',
+            cell: (req) => (
+                <div className="flex justify-end">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-brand bg-muted/5 group-hover:bg-brand/10">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem asChild>
+                                <Link href={`/procurement/requisitions/${req.id}`} className="flex items-center gap-2 cursor-pointer">
+                                    <Eye className="h-3.5 w-3.5" /> View Details
+                                </Link>
+                            </DropdownMenuItem>
+                            
+                            {(req.status === 'submitted' || req.status === 'level1_approved') && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem asChild>
+                                        <CanAny permissions={['requisitions.approve.l1', 'requisitions.approve.l2']}>
+                                            <Link href={`/procurement/requisitions/${req.id}`} className="flex items-center gap-2 cursor-pointer text-success font-semibold">
+                                                <CheckCircle2 className="h-3.5 w-3.5" /> Review Approval
+                                            </Link>
+                                        </CanAny>
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            )
+        }
+    ];
 
     return (
         <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
@@ -168,111 +282,17 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
             </div>
 
             {/* Table */}
-            <div className="bg-white rounded-2xl border border-border/50 shadow-sm overflow-hidden">
-                <div className="grid grid-cols-12 bg-muted/30 px-6 py-3 border-b border-border/50 text-[10px] font-bold uppercase tracking-widest text-text-muted">
-                    <div className="col-span-1">Type</div>
-                    <div className="col-span-3">Reference / Purpose</div>
-                    <div className="col-span-3">Route / Supplier</div>
-                    <div className="col-span-2">Requester</div>
-                    <div className="col-span-1 text-center">Items</div>
-                    <div className="col-span-1 text-center">Status</div>
-                    <div className="col-span-1 text-right">Actions</div>
-                </div>
-
-                {requisitions.data.length > 0 ? (
-                    <div className="flex flex-col divide-y divide-border/30">
-                        {requisitions.data.map((req) => (
-                            <div key={req.id} className="grid grid-cols-12 items-center px-6 py-4 hover:bg-brand/[0.02] transition-colors group">
-
-                                {/* Type badge */}
-                                <div className="col-span-1">
-                                    <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                                        req.type === 'internal'
-                                            ? 'bg-brand/10 text-brand'
-                                            : 'bg-amber-50 text-amber-700'
-                                    }`}>
-                                        {TYPE_ICONS[req.type]}
-                                    </div>
-                                </div>
-
-                                {/* Ref */}
-                                <div className="col-span-3">
-                                    <Link href={`/procurement/requisitions/${req.id}`} className="block">
-                                        <p className="text-sm font-bold font-mono text-text-primary group-hover:text-brand transition-colors">{req.reference}</p>
-                                        <p className="text-[11px] text-text-muted truncate mt-0.5">{req.purpose ?? '—'}</p>
-                                    </Link>
-                                </div>
-
-                                {/* Route (internal) / Supplier (purchase) */}
-                                <div className="col-span-3 text-sm">
-                                    {req.type === 'internal' ? (
-                                        <div className="flex items-center gap-1.5 text-text-secondary">
-                                            <span className="truncate font-semibold text-[11px] bg-muted/50 px-1.5 py-0.5 rounded" title={req.requesting_location?.name}>
-                                                {req.requesting_location?.name ?? '—'}
-                                            </span>
-                                            <ArrowRightLeft className="h-3 w-3 text-text-muted shrink-0" />
-                                            <span className="truncate text-[11px] bg-muted/20 px-1.5 py-0.5 rounded" title={req.issuing_location?.name}>
-                                                {req.issuing_location?.name ?? '—'}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <span className="text-xs text-text-secondary font-medium">{req.supplier?.name ?? <em className="text-text-muted italic font-normal">Preferred Supplier: None</em>}</span>
-                                    )}
-                                </div>
-
-                                {/* Requester */}
-                                <div className="col-span-2">
-                                    <p className="text-[13px] font-semibold text-text-primary">{req.requester?.name ?? '—'}</p>
-                                    <p className="text-[10px] text-text-muted">{new Date(req.created_at).toLocaleDateString('en-NG', { dateStyle: 'medium' })}</p>
-                                </div>
-
-                                {/* Items count */}
-                                <div className="col-span-1 text-center">
-                                    <span className="text-sm font-extrabold text-text-primary bg-muted/30 px-2.5 py-1 rounded-full">{req.items?.length ?? 0}</span>
-                                </div>
-
-                                {/* Status */}
-                                <div className="col-span-1 flex justify-center">
-                                    <Badge variant="outline" className={`text-[10px] font-bold capitalize whitespace-nowrap ${STATUS_STYLES[req.status]}`}>
-                                        {req.status.replace('_', ' ').replace('level1', 'Dept').replace('level2', 'MD')}
-                                    </Badge>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="col-span-1 flex justify-end">
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-brand bg-muted/5 group-hover:bg-brand/10">
-                                                <MoreHorizontal className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-48">
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/procurement/requisitions/${req.id}`} className="flex items-center gap-2 cursor-pointer">
-                                                    <Eye className="h-3.5 w-3.5" /> View Details
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            
-                                            {(req.status === 'submitted' || req.status === 'level1_approved') && (
-                                                <>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem asChild>
-                                                        <CanAny permissions={['requisitions.approve.l1', 'requisitions.approve.l2']}>
-                                                            <Link href={`/procurement/requisitions/${req.id}`} className="flex items-center gap-2 cursor-pointer text-success font-semibold">
-                                                                <CheckCircle2 className="h-3.5 w-3.5" /> Review Approval
-                                                            </Link>
-                                                        </CanAny>
-                                                    </DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                ) : (
-                    <div className="flex flex-col items-center py-24 gap-6 text-center">
+            <div className="bg-white rounded-2xl border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                <DataTable 
+                    columns={columns}
+                    data={requisitions.data}
+                    meta={requisitions}
+                    keyExtractor={(r) => String(r.id)}
+                    emptyMessage="No requisitions found."
+                />
+                
+                {requisitions.data.length === 0 && (
+                    <div className="flex flex-col items-center py-24 gap-6 text-center border-t border-border">
                         <div className="h-20 w-20 rounded-2xl bg-muted/50 flex items-center justify-center">
                             <ClipboardList className="h-10 w-10 text-text-muted/30" />
                         </div>
@@ -293,53 +313,6 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                     </div>
                 )}
             </div>
-
-            {/* Pagination */}
-            {requisitions.last_page > 1 && (
-                <div className="flex items-center justify-between py-4 select-none">
-                    <div className="text-sm text-text-muted">
-                        Showing <span className="font-medium text-text-primary">{requisitions.from}</span> to{' '}
-                        <span className="font-medium text-text-primary">{requisitions.to}</span> of{' '}
-                        <span className="font-medium text-text-primary">{requisitions.total}</span> results
-                    </div>
-                    <div className="flex items-center gap-1">
-                        {requisitions.links.map((link, index) => {
-                            const isPrev = link.label.includes('Previous');
-                            const isNext = link.label.includes('Next');
-
-                            let label = link.label;
-                            if (isPrev) label = '←';
-                            if (isNext) label = '→';
-
-                            if (!link.url) {
-                                return (
-                                    <div
-                                        key={index}
-                                        className="h-9 px-3 flex items-center justify-center rounded-xl border border-border text-xs font-bold uppercase tracking-wider text-text-muted bg-muted/30 cursor-not-allowed opacity-50"
-                                    >
-                                        <span dangerouslySetInnerHTML={{ __html: label }} />
-                                    </div>
-                                );
-                            }
-
-                            return (
-                                <Link
-                                    key={index}
-                                    href={link.url}
-                                    className={cn(
-                                        'h-9 min-w-[36px] px-3 flex items-center justify-center rounded-xl text-xs font-bold uppercase tracking-wider transition-all',
-                                        link.active
-                                            ? 'bg-brand text-brand-foreground shadow-md'
-                                            : 'bg-white text-text-primary border border-border/50 hover:bg-brand/5 hover:border-brand/30'
-                                    )}
-                                >
-                                    <span dangerouslySetInnerHTML={{ __html: label }} />
-                                </Link>
-                            );
-                        })}
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

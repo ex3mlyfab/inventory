@@ -14,6 +14,7 @@ use Laravel\Fortify\Features;
 use Inertia\Inertia;
 
 
+Route::any('up', fn () => response()->noContent());
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');
@@ -87,6 +88,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         // Departmental Stores Oversight
         Route::get('departmental-stores', [\App\Http\Controllers\Inventory\DepartmentalStoreController::class, 'index'])->name('departmental-stores.index');
+
+        // Suppliers
+        Route::get('suppliers/dashboard', [\App\Http\Controllers\Inventory\SupplierController::class, 'dashboard'])->name('suppliers.dashboard');
+        Route::resource('suppliers', \App\Http\Controllers\Inventory\SupplierController::class);
     });
 
     // === EQUIPMENT & ASSETS ===
@@ -99,8 +104,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // === PROCUREMENT ===
     Route::prefix('procurement')->name('procurement.')->group(function () {
-        Route::get('suppliers/dashboard', [\App\Http\Controllers\Inventory\SupplierController::class, 'dashboard'])->name('suppliers.dashboard');
-        Route::resource('suppliers', \App\Http\Controllers\Inventory\SupplierController::class);
 
         // Goods Received Notes
         Route::get('grn', [\App\Http\Controllers\Inventory\GrnController::class, 'index'])->name('grn.index');
@@ -111,12 +114,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Requisitions
         Route::get('requisitions', [RequisitionController::class, 'index'])->name('requisitions.index');
         Route::get('requisitions/create', [RequisitionController::class, 'create'])->name('requisitions.create');
+        Route::get('requisitions/check-stock', [RequisitionController::class, 'checkStock'])->name('requisitions.check-stock');
         Route::post('requisitions', [RequisitionController::class, 'store'])->name('requisitions.store');
         Route::get('requisitions/{requisition}', [RequisitionController::class, 'show'])->name('requisitions.show');
         Route::post('requisitions/{requisition}/issue', [RequisitionController::class, 'issue'])->name('requisitions.issue');
         Route::post('requisitions/{requisition}/receive', [RequisitionController::class, 'receive'])->name('requisitions.receive');
         Route::get('requisitions/{requisition}/print', [RequisitionController::class, 'printReleaseForm'])->name('requisitions.print');
-        Route::post('requisitions/{requisition}/upload-release-form', [RequisitionController::class, 'uploadReleaseForm'])->name('requisitions.upload-release-form');
+
         Route::post('requisitions/{requisition}/approve/level1', [RequisitionController::class, 'approveLevel1'])->name('requisitions.approve.l1');
         Route::post('requisitions/{requisition}/approve/level2', [RequisitionController::class, 'approveLevel2'])->name('requisitions.approve.l2');
         Route::post('requisitions/{requisition}/reject', [RequisitionController::class, 'reject'])->name('requisitions.reject');
@@ -132,8 +136,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // === REPORTS & ANALYTICS ===
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\Inventory\ReportController::class, 'index'])->name('index');
+        Route::get('/viewer', [\App\Http\Controllers\Inventory\ReportController::class, 'viewer'])->name('viewer');
         Route::get('/export', [\App\Http\Controllers\Inventory\ReportController::class, 'exportCenter'])->name('export');
         Route::post('/export', [\App\Http\Controllers\Inventory\ReportController::class, 'export'])->name('export.generate');
+        Route::get('/export-excel', [\App\Http\Controllers\Inventory\ReportController::class, 'exportExcel'])->name('export.excel');
         Route::post('/export/query', [\App\Http\Controllers\Inventory\ReportController::class, 'customQuery'])->name('export.query');
         Route::get('/audit-trail', [\App\Http\Controllers\Inventory\ReportController::class, 'auditTrail'])->name('audit-trail');
     });

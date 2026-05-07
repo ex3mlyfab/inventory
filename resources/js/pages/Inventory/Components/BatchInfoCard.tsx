@@ -1,6 +1,6 @@
 import React from 'react';
 import { StockBatch } from '@/types/inventory';
-import { Card, CardContent } from '@/Components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ExpiryBadge } from './ExpiryBadge';
 
 export function BatchInfoCard({ batch }: { batch: StockBatch }) {

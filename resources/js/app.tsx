@@ -1,4 +1,4 @@
-import { createInertiaApp } from '@inertiajs/react';
+import { createInertiaApp, router } from '@inertiajs/react';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { initializeTheme } from '@/hooks/use-appearance';
@@ -40,3 +40,8 @@ createInertiaApp({
 
 // This will set light / dark mode on load...
 initializeTheme();
+
+// Handle 419 Page Expired errors by reloading the page
+router.on('invalid-csrf-token', () => {
+    window.location.reload();
+});

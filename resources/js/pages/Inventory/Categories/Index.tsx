@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
+import { PageHeader } from '@/components/shared/page-header';
 import { Category } from '@/types/inventory';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/Components/ui/dialog';
-import { Button } from '@/Components/ui/button';
-import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
-import { Checkbox } from '@/Components/ui/checkbox';
-import InputError from '@/Components/input-error';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import InputError from '@/components/input-error';
 import { Plus, Folder, Edit2, Trash2, ChevronRight, MoreVertical } from 'lucide-react';
-import { Can } from '@/Components/can';
-import { StatusBadge } from '@/Components/shared/status-badge';
-import { ConfirmationDialog } from '@/Components/shared/confirmation-dialog';
+import { Can } from '@/components/can';
+import { StatusBadge } from '@/components/shared/status-badge';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { 
     DropdownMenu, 
     DropdownMenuContent, 
     DropdownMenuItem, 
     DropdownMenuTrigger 
-} from '@/Components/ui/dropdown-menu';
-import { DialogTrigger } from '@/Components/ui/dialog';
+} from '@/components/ui/dropdown-menu';
+import { DialogTrigger } from '@/components/ui/dialog';
 
 interface Props {
     categories: Category[];

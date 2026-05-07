@@ -1,18 +1,18 @@
 import React from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column } from '@/Components/shared/data-table';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { Product, StockBatch, PaginationMeta } from '@/types/inventory';
 import { ExpiryBadge } from '../Components/ExpiryBadge';
-import { Badge } from '@/Components/ui/badge';
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent } from '@/Components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 import { 
     Package, History, MapPin, Calendar, 
     ArrowLeft, MoreVertical, ExternalLink, Settings2
 } from 'lucide-react';
 import { AdjustmentDialog } from './Partials/AdjustmentDialog';
-import { Can } from '@/Components/can';
+import { Can } from '@/components/can';
 
 interface Props {
     product: Product;

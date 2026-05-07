@@ -1,14 +1,14 @@
 import React, { useRef, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 
-import { PageHeader } from '@/Components/shared/page-header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
-import { Label } from '@/Components/ui/label';
-import { Input } from '@/Components/ui/input';
-import { Button } from '@/Components/ui/button';
+import { PageHeader } from '@/components/shared/page-header';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Category, UnitOfMeasure } from '@/types/inventory';
-import { Checkbox } from '@/Components/ui/checkbox';
-import InputError from '@/Components/input-error';
+import { Checkbox } from '@/components/ui/checkbox';
+import InputError from '@/components/input-error';
 import { ImagePlus, X, Upload } from 'lucide-react';
 
 interface Props {
@@ -216,7 +216,7 @@ export default function CreateProduct({ categories, units }: Props) {
                                         />
                                         <div className="flex flex-col">
                                             <span className="font-bold text-info italic">Controlled Item</span>
-                                            <span className="text-[10px] text-text-muted">Requires prescription for dispensing</span>
+                                            <span className="text-[10px] text-text-muted">Requires strict authorization for issuance</span>
                                         </div>
                                     </label>
                                 </div>

@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column, PaginationMeta } from '@/Components/shared/data-table';
-import { Badge } from '@/Components/ui/badge';
-import { Button } from '@/Components/ui/button';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column, PaginationMeta } from '@/components/shared/data-table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
     ClipboardList, Plus, Calendar, 
     ChevronRight, MapPin, Loader2, History, CheckCircle2, Clock, AlertCircle
@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import { 
     Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription 
 } from '@/components/ui/dialog';
-import { Can } from '@/Components/can';
+import { Can } from '@/components/can';
 import { 
     Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
 } from '@/components/ui/select';

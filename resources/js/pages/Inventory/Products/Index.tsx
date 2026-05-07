@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column } from '@/Components/shared/data-table';
+import AppLayout from '@/layouts/app-layout';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column } from '@/components/shared/data-table';
 import { Product, PaginationMeta } from '@/types/inventory';
 import { ProductSearch } from '../Components/ProductSearch';
-import { Button } from '@/Components/ui/button';
+import { Button } from '@/components/ui/button';
 import { Plus, MoreHorizontal, Eye, Edit2, Trash2, Package } from 'lucide-react';
 import { StockLevelIndicator } from '../Components/StockLevelIndicator';
-import { Can } from '@/Components/can';
+import { Can } from '@/components/can';
 import { 
     DropdownMenu, 
     DropdownMenuContent, 
@@ -15,10 +16,10 @@ import {
     DropdownMenuLabel, 
     DropdownMenuSeparator, 
     DropdownMenuTrigger 
-} from '@/Components/ui/dropdown-menu';
-import { ConfirmationDialog } from '@/Components/shared/confirmation-dialog';
-import { Badge } from '@/Components/ui/badge';
-import { StatCard } from '@/Components/shared/stat-card';
+} from '@/components/ui/dropdown-menu';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
+import { Badge } from '@/components/ui/badge';
+import { StatCard } from '@/components/shared/stat-card';
 import { AlertTriangle, PackageSearch } from 'lucide-react';
 
 interface Props {
@@ -260,9 +261,10 @@ export default function ProductsIndex({ products, filters, stats }: Props) {
     );
 }
 
+// @ts-ignore
 ProductsIndex.layout = {
     breadcrumbs: [
         { title: 'Inventory', href: '/inventory/products' },
-        { title: 'Products Catalog', href: '#' }
-    ],
+        { title: 'Products Catalog', href: '/inventory/products' }
+    ]
 };

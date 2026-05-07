@@ -14,6 +14,10 @@ use Inertia\Inertia;
 use Spatie\Activitylog\Models\Activity;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Models\StorageLocation;
+use App\Models\Department;
+use App\Exports\InventoryReportExport;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
@@ -45,7 +49,7 @@ class ReportController extends Controller
             $movementData[] = [
                 'date' => now()->subDays($i)->format('M d'),
                 'in' => (int) StockMovement::whereDate('created_at', $date)->whereIn('type', ['in', 'adjustment_up', 'transfer_in'])->sum('quantity'),
-                'out' => (int) StockMovement::whereDate('created_at', $date)->whereIn('type', ['out', 'adjustment_down', 'transfer_out', 'dispense'])->sum('quantity'),
+                'out' => (int) StockMovement::whereDate('created_at', $date)->whereIn('type', ['out', 'adjustment_down', 'transfer_out'])->sum('quantity'),
             ];
         }
 
@@ -226,5 +230,152 @@ class ReportController extends Controller
             'activities' => $activities,
             'filters' => $request->only(['search'])
         ]);
+    }
+
+    public function viewer(Request $request)
+    {
+        Gate::authorize('reports.view');
+
+        $type = $request->input('type', 'products');
+        $filters = $request->all();
+
+        $data = match ($type) {
+            'movements' => $this->getMovementsData($filters),
+            'consumption' => $this->getConsumptionData($filters),
+            'stores' => $this->getStoresData($filters),
+            default => $this->getProductsData($filters),
+        };
+
+        return Inertia::render('Inventory/Reports/ReportViewer', [
+            'reportData' => $data,
+            'type' => $type,
+            'filters' => $filters,
+            'categories' => Category::all(['id', 'name']),
+            'locations' => StorageLocation::all(['id', 'name']),
+            'departments' => Department::all(['id', 'name']),
+        ]);
+    }
+
+    public function exportExcel(Request $request)
+    {
+        Gate::authorize('reports.export');
+
+        $type = $request->input('type', 'products');
+        $filters = $request->all();
+
+        $data = match ($type) {
+            'movements' => $this->getMovementsData($filters, false),
+            'consumption' => $this->getConsumptionData($filters, false),
+            'stores' => $this->getStoresData($filters, false),
+            default => $this->getProductsData($filters, false),
+        };
+
+        $filename = "{$type}_report_" . now()->format('Ymd_His') . ".xlsx";
+
+        return Excel::download(new InventoryReportExport($data, $type), $filename);
+    }
+
+    private function applyDateFilters($query, $filters, $column = 'created_at')
+    {
+        if (!empty($filters['period'])) {
+            $query->whereBetween($column, match ($filters['period']) {
+                'today' => [now()->startOfDay(), now()->endOfDay()],
+                'weekly' => [now()->startOfWeek(), now()->endOfWeek()],
+                'monthly' => [now()->startOfMonth(), now()->endOfMonth()],
+                'last_month' => [now()->subMonth()->startOfMonth(), now()->subMonth()->endOfMonth()],
+                'yearly' => [now()->startOfYear(), now()->endOfYear()],
+                default => [now()->startOfDay(), now()->endOfDay()],
+            });
+        } elseif (!empty($filters['start_date']) && !empty($filters['end_date'])) {
+            $query->whereBetween($column, [
+                $filters['start_date'] . ' 00:00:00',
+                $filters['end_date'] . ' 23:59:59'
+            ]);
+        }
+
+        return $query;
+    }
+
+    private function getProductsData($filters, $paginate = true)
+    {
+        $query = Product::with(['category', 'unitOfMeasure'])
+            ->withSum(['stockBatches as quantity_on_hand' => function($q) {
+                $q->where('status', 'active');
+            }], 'quantity_on_hand');
+
+        if (!empty($filters['search'])) {
+            $query->where('name', 'like', "%{$filters['search']}%")
+                  ->orWhere('sku', 'like', "%{$filters['search']}%");
+        }
+
+        if (!empty($filters['category_id'])) {
+            $query->where('category_id', $filters['category_id']);
+        }
+
+        return $paginate ? $query->paginate(25)->withQueryString() : $query->get();
+    }
+
+    private function getMovementsData($filters, $paginate = true)
+    {
+        $query = StockMovement::with(['batch.product', 'user'])->latest();
+
+        $query = $this->applyDateFilters($query, $filters);
+
+        if (!empty($filters['search'])) {
+            $query->whereHas('batch.product', function($q) use ($filters) {
+                $q->where('name', 'like', "%{$filters['search']}%");
+            });
+        }
+
+        return $paginate ? $query->paginate(25)->withQueryString() : $query->get();
+    }
+
+    private function getConsumptionData($filters, $paginate = true)
+    {
+        // For consumption, we aggregate 'out' movements or fulfillments
+        $query = DB::table('stock_movements')
+            ->join('stock_batches', 'stock_movements.stock_batch_id', '=', 'stock_batches.id')
+            ->join('products', 'stock_batches.product_id', '=', 'products.id')
+            ->join('categories', 'products.category_id', '=', 'categories.id')
+            ->join('unit_of_measures', 'products.unit_of_measure_id', '=', 'unit_of_measures.id')
+            ->where('stock_movements.type', 'out')
+            ->select(
+                'products.id',
+                'products.name',
+                'products.sku',
+                'categories.name as category_name',
+                'unit_of_measures.abbreviation as uom_name',
+                DB::raw('SUM(stock_movements.quantity) as total_consumed')
+            )
+            ->groupBy('products.id', 'products.name', 'products.sku', 'categories.name', 'unit_of_measures.abbreviation');
+
+        if (!empty($filters['period']) || (!empty($filters['start_date']) && !empty($filters['end_date']))) {
+            $this->applyDateFilters($query, $filters, 'stock_movements.created_at');
+        }
+
+        if (!empty($filters['search'])) {
+            $query->where('products.name', 'like', "%{$filters['search']}%");
+        }
+
+        return $paginate ? $query->paginate(25)->withQueryString() : $query->get();
+    }
+
+    private function getStoresData($filters, $paginate = true)
+    {
+        $query = StockBatch::with(['product', 'storageLocation.department'])
+            ->where('quantity_on_hand', '>', 0)
+            ->where('status', 'active');
+
+        if (!empty($filters['location_id'])) {
+            $query->where('storage_location_id', $filters['location_id']);
+        }
+
+        if (!empty($filters['search'])) {
+            $query->whereHas('product', function($q) use ($filters) {
+                $q->where('name', 'like', "%{$filters['search']}%");
+            });
+        }
+
+        return $paginate ? $query->paginate(25)->withQueryString() : $query->get();
     }
 }

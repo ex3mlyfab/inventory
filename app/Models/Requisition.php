@@ -35,6 +35,8 @@ class Requisition extends Model
         'level2_approved_by',
         'level2_approved_at',
         'level2_notes',
+        'collector_name',
+        'collector_signature_path',
     ];
 
     protected $casts = [

@@ -62,7 +62,7 @@ class RequisitionController extends Controller
         $user = Auth::user();
 
         $query = Requisition::with([
-            'requester',
+            'requester.department',
             'requestingLocation.department',
             'requestingDepartment',
             'issuingLocation',
@@ -202,6 +202,26 @@ class RequisitionController extends Controller
         ]);
     }
 
+    /**
+     * Check available stock for a product at a specific location.
+     */
+    public function checkStock(Request $request)
+    {
+        $request->validate([
+            'product_id'  => ['required', 'ulid', 'exists:products,id'],
+            'location_id' => ['required', 'ulid', 'exists:storage_locations,id'],
+        ]);
+
+        $stock = \App\Models\StockBatch::where('product_id', $request->product_id)
+            ->where('storage_location_id', $request->location_id)
+            ->where('status', 'active')
+            ->sum('quantity_on_hand');
+
+        return response()->json([
+            'available' => (int) $stock,
+        ]);
+    }
+
     // ── Store ──────────────────────────────────────────────────────────
 
     public function store(Request $request)
@@ -317,7 +337,7 @@ class RequisitionController extends Controller
                     $used = $this->syncReportedStock($syncLocationId, $item['product_id'], (int) $item['quantity_on_hand']);
                     
                     if ($used > 0) {
-                        $requisition->items()->where('product_id', $item['product_id'])->update([
+                        $req->items()->where('product_id', $item['product_id'])->update([
                             'quantity_used' => $used
                         ]);
                     }
@@ -410,38 +430,7 @@ class RequisitionController extends Controller
         ]);
     }
 
-    /**
-     * Upload the signed release form and mark as in transit.
-     */
-    public function uploadReleaseForm(Request $request, Requisition $requisition)
-    {
-        Gate::authorize('requisitions.create');
 
-        if ($requisition->requested_by !== Auth::id()) {
-            abort(403, 'Only the requester can upload the signed release form.');
-        }
-
-        if ($requisition->status !== 'approved') {
-            return back()->with('error', 'Only approved requisitions can be marked as in transit.');
-        }
-
-        $request->validate([
-            'release_form' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
-        ]);
-
-        if ($request->hasFile('release_form')) {
-            $path = $request->file('release_form')->store('requisitions/release-forms', 'public');
-            
-            $requisition->update([
-                'release_form_path' => $path,
-                'status'            => 'in_transit',
-            ]);
-
-            return back()->with('success', 'Signed release form uploaded. Requisition is now marked as IN TRANSIT.');
-        }
-
-        return back()->with('error', 'File upload failed.');
-    }
 
     // ── Level 1 Approve ────────────────────────────────────────────────
 
@@ -600,19 +589,48 @@ class RequisitionController extends Controller
             'issuances.*.requisition_item_id' => ['required', 'ulid', 'exists:requisition_items,id'],
             'issuances.*.stock_batch_id'      => ['required', 'ulid', 'exists:stock_batches,id'],
             'issuances.*.quantity'            => ['required', 'integer', 'min:1'],
-            'release_form'                    => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:5120'],
+            'collector_name'                  => ['required', 'string', 'max:100'],
+            'collector_signature'             => ['nullable', 'string'], // base64 string
         ]);
 
         try {
-            DB::transaction(function () use ($requisition, $validated, $action, $user, $request) {
+            DB::transaction(function () use ($requisition, $validated, $action, $user) {
                 $action->execute($requisition, $validated['issuances'], $user->id);
 
-                if ($request->hasFile('release_form')) {
-                    $path = $request->file('release_form')->store('requisitions/release-forms', 'public');
-                    $requisition->update(['release_form_path' => $path]);
+                $updateData = [
+                    'collector_name' => $validated['collector_name'],
+                    'status'         => 'in_transit', // Mark as in transit immediately after issuance
+                ];
+
+                if (!empty($validated['collector_signature'])) {
+                    $signatureData = $validated['collector_signature'];
+                    if (preg_match('/^data:image\/(\w+);base64,/', $signatureData, $type)) {
+                        $signatureData = substr($signatureData, strpos($signatureData, ',') + 1);
+                        $type = strtolower($type[1]); // jpg, png, gif
+
+                        if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) {
+                            throw new \Exception('invalid image type');
+                        }
+
+                        $signatureData = base64_decode($signatureData);
+
+                        if ($signatureData === false) {
+                            throw new \Exception('base64_decode failed');
+                        }
+                    } else {
+                        throw new \Exception('did not match data URI with image data');
+                    }
+
+                    $fileName = 'sig_' . $requisition->id . '_' . time() . '.' . $type;
+                    $path = 'requisitions/signatures/' . $fileName;
+                    \Illuminate\Support\Facades\Storage::disk('public')->put($path, $signatureData);
+                    
+                    $updateData['collector_signature_path'] = $path;
                 }
+
+                $requisition->update($updateData);
             });
-            return back()->with('success', 'Items issued successfully.');
+            return back()->with('success', 'Items issued successfully. Requisition is now IN TRANSIT.');
         } catch (\Exception $e) {
             return back()->withErrors(['error' => $e->getMessage()]);
         }
@@ -625,8 +643,28 @@ class RequisitionController extends Controller
     {
         Gate::authorize('requisitions.create');
 
-        if ($requisition->requested_by !== Auth::id()) {
-            abort(403, 'Only the requester can confirm receipt.');
+        $user = Auth::user();
+        
+        $isRequester = $requisition->requested_by === $user->id;
+        $isDeptHead = false;
+
+        if ($user->hasRole('Ward/Dept Head')) {
+            // Check if user is head of the requesting department or the department of the requesting location
+            $deptIds = \App\Models\Department::where('head_user_id', $user->id)->pluck('id');
+            
+            if ($user->department_id && !$deptIds->contains($user->department_id)) {
+                $deptIds->push($user->department_id);
+            }
+
+            $reqDeptId = $requisition->requesting_department_id;
+            $locDeptId = $requisition->requestingLocation?->department_id;
+
+            $isDeptHead = ($reqDeptId && $deptIds->contains($reqDeptId)) || 
+                         ($locDeptId && $deptIds->contains($locDeptId));
+        }
+
+        if (!$isRequester && !$isDeptHead && !$user->hasRole('Super Admin')) {
+            abort(403, 'Only the requester or the Department Head can confirm receipt.');
         }
 
         if (!in_array($requisition->status, ['issued', 'in_transit'])) {

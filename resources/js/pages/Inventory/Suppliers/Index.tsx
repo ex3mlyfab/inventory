@@ -42,11 +42,11 @@ export default function SuppliersIndex({ suppliers, filters, categories, statuse
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
-        router.get('/procurement/suppliers', { ...filters, search }, { preserveState: true });
+        router.get('/inventory/suppliers', { ...filters, search }, { preserveState: true });
     };
 
     const handleFilterChange = (key: string, value: string) => {
-        router.get('/procurement/suppliers', { ...filters, [key]: value === 'all' ? undefined : value }, { preserveState: true });
+        router.get('/inventory/suppliers', { ...filters, [key]: value === 'all' ? undefined : value }, { preserveState: true });
     };
 
     const openDelete = (supplier: Supplier) => {
@@ -273,7 +273,7 @@ export default function SuppliersIndex({ suppliers, filters, categories, statuse
 // @ts-ignore
 SuppliersIndex.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
-        { title: 'Suppliers Directory', href: '#' }
+        { title: 'Inventory', href: '/inventory/stock' },
+        { title: 'Supplier Directory', href: '#' }
     ],
 };

@@ -11,6 +11,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { PageHeader } from '@/components/shared/page-header';
+import { Combobox } from '@/components/ui/combobox';
 import type { Department, Role } from '@/types/auth';
 import { ArrowLeft } from 'lucide-react';
 
@@ -25,8 +26,7 @@ export default function CreateUser({ roles, departments }: Props) {
         email: '',
         password: '',
         password_confirmation: '',
-        department_id: '' as string,
-        department_id: '' as string,
+        department_id: '',
         employee_id: '',
         phone: '',
         is_active: true,
@@ -91,6 +91,26 @@ export default function CreateUser({ roles, departments }: Props) {
                         </div>
                     </div>
 
+                    <div className="border-t border-[#E1E3E5]" />
+
+                    {/* Section: Department */}
+                    <div>
+                        <h3 className="mb-4 text-sm font-semibold text-[#181d1a]">Department Assignment</h3>
+                        <div className="space-y-1.5">
+                            <Label htmlFor="department_id" className="text-xs font-medium text-[#202223]">Department</Label>
+                            <Combobox
+                                options={departments.map((dept) => ({
+                                    label: dept.name,
+                                    value: String(dept.id),
+                                }))}
+                                value={data.department_id}
+                                onChange={(value) => setData('department_id', value)}
+                                placeholder="Search and select a department"
+                                emptyMessage="No department found."
+                            />
+                            {errors.department_id && <p className="text-xs text-[#D82C0D]">{errors.department_id}</p>}
+                        </div>
+                    </div>
 
                     {/* Divider */}
                     <div className="border-t border-[#E1E3E5]" />

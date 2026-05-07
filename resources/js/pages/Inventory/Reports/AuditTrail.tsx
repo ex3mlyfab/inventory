@@ -174,14 +174,11 @@ export default function AuditTrail({ activities, filters }: Props) {
     );
 }
 
-AuditTrail.layout = (page: React.ReactNode) => (
-    <AppLayout
-        breadcrumbs={[
-            { title: 'Dashboard', href: '/' },
-            { title: 'Reports', href: '/reports' },
-            { title: 'Audit Trail', href: '/reports/audit-trail' },
-        ]}
-    >
-        {page}
-    </AppLayout>
-);
+// @ts-ignore
+AuditTrail.layout = {
+    breadcrumbs: [
+        { title: 'Dashboard', href: '/' },
+        { title: 'Reports', href: '/reports' },
+        { title: 'Audit Trail', href: '/reports/audit-trail' },
+    ]
+};

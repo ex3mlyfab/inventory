@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Supplier } from '@/types/inventory';
 import InputError from '@/components/input-error';
-import { Save, X, Building2, Contact, MapPin, BadgeCheck } from 'lucide-react';
+import { Save, Building2, Contact, MapPin, BadgeCheck } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface Props {
     supplier?: Supplier;
@@ -23,7 +24,7 @@ export default function SupplierForm({ supplier, categories }: Props) {
         phone: supplier?.phone || '',
         address: supplier?.address || '',
         contact_person: supplier?.contact_person || '',
-        category: supplier?.category || categories[0] || 'general_medical',
+        category: supplier?.category || categories[0] || 'general',
         tax_id: supplier?.tax_id || '',
         description: supplier?.description || '',
         status: supplier?.status || 'active',
@@ -32,9 +33,9 @@ export default function SupplierForm({ supplier, categories }: Props) {
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         if (isEditing) {
-            put(`/procurement/suppliers/${supplier.id}`);
+            put(`/inventory/suppliers/${supplier.id}`);
         } else {
-            post('/procurement/suppliers');
+            post('/inventory/suppliers');
         }
     };
 
@@ -74,18 +75,21 @@ export default function SupplierForm({ supplier, categories }: Props) {
 
                         <div className="space-y-2">
                             <Label htmlFor="category" className="text-xs font-bold text-text-muted uppercase tracking-wider">Business Category</Label>
-                            <select 
-                                id="category"
-                                className="flex h-10 w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={data.category}
-                                onChange={e => setData('category', e.target.value)}
+                            <Select 
+                                value={data.category} 
+                                onValueChange={v => setData('category', v)}
                             >
-                                {categories.map(cat => (
-                                    <option key={cat} value={cat}>
-                                        {cat.replace('_', ' ').charAt(0).toUpperCase() + cat.replace('_', ' ').slice(1)}
-                                    </option>
-                                ))}
-                            </select>
+                                <SelectTrigger className="bg-muted/30 border-none focus:ring-brand/20">
+                                    <SelectValue placeholder="Select Category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {categories.map(cat => (
+                                        <SelectItem key={cat} value={cat} className="capitalize">
+                                            {cat.replace('_', ' ')}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                             <InputError message={errors.category} />
                         </div>
 
@@ -172,17 +176,20 @@ export default function SupplierForm({ supplier, categories }: Props) {
                     <CardContent className="p-6 space-y-6">
                         <div className="space-y-2">
                             <Label htmlFor="status" className="text-xs font-bold text-text-muted uppercase tracking-wider">Verification Status</Label>
-                            <select 
-                                id="status"
-                                className="flex h-10 w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-50"
-                                value={data.status}
-                                onChange={e => setData('status', e.target.value)}
+                            <Select 
+                                value={data.status} 
+                                onValueChange={v => setData('status', v)}
                             >
-                                <option value="active">Verified (Active)</option>
-                                <option value="on_hold">On Hold (Pending Review)</option>
-                                <option value="inactive">Inactive</option>
-                                <option value="blacklisted">Blacklisted</option>
-                            </select>
+                                <SelectTrigger className="bg-muted/30 border-none focus:ring-brand/20">
+                                    <SelectValue placeholder="Select Status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="active">Verified (Active)</SelectItem>
+                                    <SelectItem value="on_hold">On Hold (Pending Review)</SelectItem>
+                                    <SelectItem value="inactive">Inactive</SelectItem>
+                                    <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                                </SelectContent>
+                            </Select>
                             <InputError message={errors.status} />
                         </div>
 

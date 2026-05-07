@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { Head } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { DataTable, Column, PaginationMeta } from '@/Components/shared/data-table';
+import { PageHeader } from '@/components/shared/page-header';
+import { DataTable, Column, PaginationMeta } from '@/components/shared/data-table';
 import { StockMovement, StorageLocationBasic } from '@/types/inventory';
-import { Badge } from '@/Components/ui/badge';
-import { Button } from '@/Components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
     ArrowRightLeft, Plus, Calendar, 
     ArrowUpRight, ArrowDownLeft, MapPin, Package, User

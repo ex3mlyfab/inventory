@@ -1,5 +1,6 @@
 import React from 'react';
 import { Head, router } from '@inertiajs/react';
+import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from '@/components/shared/page-header';
 import { DataTable, Column } from '@/components/shared/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -318,9 +319,10 @@ export default function DepartmentalStoreOversight({
     );
 }
 
+// @ts-ignore
 DepartmentalStoreOversight.layout = {
     breadcrumbs: [
         { title: 'Inventory', href: '#' },
-        { title: 'Departmental Stores', href: '#' }
-    ],
+        { title: 'Departmental Stores', href: '/inventory/departmental-stores' }
+    ]
 };

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
-import { PageHeader } from '@/Components/shared/page-header';
-import { Button } from '@/Components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/Components/ui/card';
-import { Input } from '@/Components/ui/input';
-import { Label } from '@/Components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/Components/ui/select';
+import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Product, StorageLocationBasic } from '@/types/inventory';
 import { 
     Plus, Trash2, Save, Package, Store, 

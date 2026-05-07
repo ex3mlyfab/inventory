@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge } from '@/Components/ui/badge';
+import { Badge } from '@/components/ui/badge';
 
 interface ExpiryBadgeProps {
     expiryDate: string | null;
