@@ -4,6 +4,7 @@ import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 import {
     ArrowLeft, Printer, ShoppingCart, Calendar,
     User, CheckCircle2, XCircle, AlertCircle,
@@ -233,7 +234,10 @@ export default function PurchaseOrderShow({ order, canApproveL1, canApproveL2, c
                                                 <span className="text-[10px] text-text-muted ml-1">{item.product.unit_of_measure?.abbreviation}</span>
                                             </td>
                                             <td className="px-3 py-4 text-center">
-                                                <Badge variant={item.quantity_received >= item.quantity ? 'success' : 'outline'} className="text-[10px] font-bold">
+                                                <Badge variant={item.quantity_received >= item.quantity ? 'outline' : 'outline'} className={cn(
+                                                    "text-[10px] font-bold",
+                                                    item.quantity_received >= item.quantity && "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                )}>
                                                     {item.quantity_received}
                                                 </Badge>
                                             </td>
@@ -271,7 +275,7 @@ export default function PurchaseOrderShow({ order, canApproveL1, canApproveL2, c
                                         <div className="flex items-center justify-between">
                                             <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Level 1: Procurement Supervisor</p>
                                             {order.level1_approved_at ? (
-                                                <Badge variant="success" className="text-[9px] h-5">Approved</Badge>
+                                                <Badge variant="outline" className="text-[9px] h-5 border-emerald-200 bg-emerald-50 text-emerald-700">Approved</Badge>
                                             ) : (
                                                 <Badge variant="outline" className="text-[9px] h-5 animate-pulse">Awaiting Action</Badge>
                                             )}
@@ -302,7 +306,7 @@ export default function PurchaseOrderShow({ order, canApproveL1, canApproveL2, c
                                         <div className="flex items-center justify-between">
                                             <p className="text-[11px] font-bold uppercase tracking-widest text-text-muted">Level 2: Medical Director</p>
                                             {order.level2_approved_at ? (
-                                                <Badge variant="success" className="text-[9px] h-5">Approved</Badge>
+                                                <Badge variant="outline" className="text-[9px] h-5 border-emerald-200 bg-emerald-50 text-emerald-700">Approved</Badge>
                                             ) : (
                                                 <Badge variant="outline" className="text-[9px] h-5">Pending L1 Approval</Badge>
                                             )}

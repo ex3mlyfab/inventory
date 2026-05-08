@@ -243,23 +243,6 @@ export default function SettingsIndex({ settings }: Props) {
     );
 }
 
-SettingsIndex.layout = (page: React.ReactNode) => {
-    // Assuming there is a common layout, but the example didn't show it 
-    // In many Inertia setups, you wrap it in the page component.
-    // However, looking at UsersIndex, it doesn't explicitly define .layout as a function return.
-    // Wait, let's check how other pages define layout.
-    return page;
-}
-
-// Actually, looking back at UsersIndex:
-// UsersIndex.layout = {
-//     breadcrumbs: [
-//         { title: 'Administration', href: '/admin/users' },
-//         { title: 'Users', href: '/admin/users' },
-//     ],
-// };
-// This looks like a custom property used by a root layout.
-
 // @ts-ignore
 SettingsIndex.layout = {
     breadcrumbs: [

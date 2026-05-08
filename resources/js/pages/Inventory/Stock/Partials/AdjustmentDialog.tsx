@@ -35,7 +35,13 @@ export function AdjustmentDialog({ isOpen, onClose, initialProduct, initialBatch
     const [searchResults, setSearchResults] = useState<Product[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(initialProduct || null);
     
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm<{
+        stock_batch_id: string;
+        quantity: string;
+        reason: string;
+        notes: string;
+        error?: string;
+    }>({
         stock_batch_id: initialBatch?.id || '',
         quantity: '',
         reason: 'cycle_count',

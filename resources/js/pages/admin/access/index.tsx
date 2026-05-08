@@ -76,17 +76,17 @@ const moduleIcons: Record<string, React.ReactNode> = {
 };
 
 export default function AccessManagement({ users, roles, permissionGroups, departments, filters }: Props) {
-    const [selectedUserId, setSelectedUserId] = useState<number | null>(users.data[0]?.id || null);
-    const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+    const [selectedUserId, setSelectedUserId] = useState<string | null>(users.data[0]?.id ? String(users.data[0].id) : null);
+    const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
     const [search, setSearch] = useState(filters.search || '');
 
     const selectedUser = useMemo(() => 
-        users.data.find(u => u.id === selectedUserId) || users.data[0],
+        users.data.find(u => String(u.id) === selectedUserId) || users.data[0],
         [selectedUserId, users.data]
     );
 
     const activeRole = useMemo(() => {
-        if (selectedRoleId) return roles.find(r => r.id === selectedRoleId);
+        if (selectedRoleId) return roles.find(r => String(r.id) === selectedRoleId);
         if (selectedUser?.roles?.[0]) return roles.find(r => r.id === selectedUser.roles[0].id);
         return roles[0];
     }, [selectedRoleId, selectedUser, roles]);
@@ -213,12 +213,12 @@ export default function AccessManagement({ users, roles, permissionGroups, depar
                                                     key={user.id} 
                                                     className={cn(
                                                         "group cursor-pointer transition-colors hover:bg-[#f3f9f6]",
-                                                        selectedUserId === user.id ? "bg-[#f3f9f6]" : ""
+                                                        selectedUserId === String(user.id) ? "bg-[#f3f9f6]" : ""
                                                     )}
-                                                    onClick={() => setSelectedUserId(user.id)}
+                                                    onClick={() => setSelectedUserId(String(user.id))}
                                                 >
                                                     <TableCell className="px-4" onClick={(e) => e.stopPropagation()}>
-                                                        <Checkbox checked={selectedUserId === user.id} />
+                                                        <Checkbox checked={selectedUserId === String(user.id)} />
                                                     </TableCell>
                                                     <TableCell className="py-4">
                                                         <div className="flex items-center gap-3">
@@ -250,7 +250,7 @@ export default function AccessManagement({ users, roles, permissionGroups, depar
                                                     <TableCell className="py-4 text-right">
                                                         <ChevronRight className={cn(
                                                             "h-4 w-4 transition-transform text-[#babfc3]",
-                                                            selectedUserId === user.id ? "translate-x-1 text-[#008060]" : ""
+                                                            selectedUserId === String(user.id) ? "translate-x-1 text-[#008060]" : ""
                                                         )} />
                                                     </TableCell>
                                                 </TableRow>
@@ -309,7 +309,7 @@ export default function AccessManagement({ users, roles, permissionGroups, depar
                                             <label className="text-[11px] font-bold uppercase tracking-wider text-[#6D7175]">GLOBAL ROLE PRESETS</label>
                                             <Select 
                                                  value={String(activeRole?.id)} 
-                                                 onValueChange={(v) => setSelectedRoleId(Number(v))}
+                                                 onValueChange={(v) => setSelectedRoleId(v)}
                                             >
                                                 <SelectTrigger className="h-12 border-[#babfc3] bg-[#f9fafb]">
                                                     <SelectValue placeholder="Quick apply a template..." />

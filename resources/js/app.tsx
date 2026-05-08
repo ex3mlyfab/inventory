@@ -42,6 +42,8 @@ createInertiaApp({
 initializeTheme();
 
 // Handle 419 Page Expired errors by reloading the page
-router.on('invalid-csrf-token', () => {
-    window.location.reload();
-});
+router.on('httpException', ((event: CustomEvent) => {
+    if (event?.detail?.response?.status === 419) {
+        window.location.reload();
+    }
+}) as EventListener);

@@ -178,7 +178,7 @@ export default function SupplierForm({ supplier, categories }: Props) {
                             <Label htmlFor="status" className="text-xs font-bold text-text-muted uppercase tracking-wider">Verification Status</Label>
                             <Select 
                                 value={data.status} 
-                                onValueChange={v => setData('status', v)}
+                                onValueChange={v => setData('status', v as 'active' | 'on_hold' | 'inactive' | 'blacklisted' | 'suspended')}
                             >
                                 <SelectTrigger className="bg-muted/30 border-none focus:ring-brand/20">
                                     <SelectValue placeholder="Select Status" />

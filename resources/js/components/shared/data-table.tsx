@@ -12,6 +12,7 @@ import { Link } from '@inertiajs/react';
 
 export interface Column<T> {
     header: string;
+    id?: string;
     accessorKey?: keyof T;
     cell?: (item: T) => ReactNode;
     className?: string;
@@ -19,10 +20,10 @@ export interface Column<T> {
 
 export interface PaginationMeta {
     current_page: number;
-    from: number;
+    from: number | null;
     last_page: number;
     per_page: number;
-    to: number;
+    to: number | null;
     total: number;
     links: {
         url: string | null;
@@ -36,7 +37,8 @@ interface DataTableProps<T> {
     columns: Column<T>[];
     keyExtractor: (item: T) => string | number;
     meta?: PaginationMeta;
-    emptyMessage?: string;
+    headerBackground?: string;
+    emptyMessage?: string | ReactNode;
     onRowClick?: (item: T) => void;
     className?: string;
 }
@@ -46,6 +48,7 @@ export function DataTable<T>({
     columns,
     keyExtractor,
     meta,
+    headerBackground,
     emptyMessage = 'No results found.',
     onRowClick,
     className,
@@ -54,11 +57,11 @@ export function DataTable<T>({
         <div className={cn('flex flex-col w-full', className)}>
             <div className="rounded-md border border-border bg-white shadow-sm overflow-hidden">
                 <Table>
-                    <TableHeader className="bg-surface-header">
+                    <TableHeader className={cn('bg-surface-header', headerBackground)}>
                         <TableRow>
-                            {columns.map((column, index) => (
+                            {columns.map((column) => (
                                 <TableHead
-                                    key={index}
+                                    key={column.id ?? column.header ?? column.accessorKey?.toString()}
                                     className={cn(
                                         'text-xs font-semibold uppercase tracking-wider text-text-secondary h-12',
                                         column.className
@@ -121,7 +124,9 @@ export function DataTable<T>({
                             const isPrev = link.label.includes('Previous');
                             const isNext = link.label.includes('Next');
 
-                            let label = link.label;
+                            let label = link.label
+                                .replace(/&laquo;/g, '«')
+                                .replace(/&raquo;/g, '»');
                             if (isPrev) label = '←';
                             if (isNext) label = '→';
 
@@ -131,7 +136,7 @@ export function DataTable<T>({
                                         key={index}
                                         className="h-8 px-3 flex items-center justify-center rounded-md border border-border text-sm font-medium text-text-muted bg-surface cursor-not-allowed opacity-50"
                                     >
-                                        <span dangerouslySetInnerHTML={{ __html: label }} />
+                                        {label}
                                     </div>
                                 );
                             }
@@ -143,11 +148,11 @@ export function DataTable<T>({
                                     className={cn(
                                         'h-8 min-w-[32px] px-3 flex items-center justify-center rounded-md text-sm font-medium transition-colors',
                                         link.active
-                                            ? 'bg-brand text-white border border-brand'
+                                            ? 'bg-brand text-brand-foreground border border-brand'
                                             : 'bg-white text-text-primary border border-border hover:bg-surface-hover'
                                     )}
                                 >
-                                    <span dangerouslySetInnerHTML={{ __html: label }} />
+                                    {label}
                                 </Link>
                             );
                         })}

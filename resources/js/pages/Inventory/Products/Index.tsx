@@ -40,7 +40,7 @@ export default function ProductsIndex({ products, filters, stats }: Props) {
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
-    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors } = useForm({});
+    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors } = useForm<{ error?: string }>({});
 
     const openDelete = (product: Product) => {
         setProductToDelete(product);
@@ -204,7 +204,8 @@ export default function ProductsIndex({ products, filters, stats }: Props) {
                         </div>
                     </div>
 
-                    <div className="bg-white rounded-2xl border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
+                    {/* Desktop Table */}
+                    <div className="hidden md:block bg-white rounded-2xl border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                         <DataTable 
                             columns={columns}
                             data={products.data}
@@ -222,6 +223,88 @@ export default function ProductsIndex({ products, filters, stats }: Props) {
                                 </div>
                             }
                         />
+                    </div>
+
+                    {/* Mobile Cards */}
+                    <div className="md:hidden flex flex-col gap-3">
+                        {products.data.length > 0 ? (
+                            products.data.map((product) => (
+                                <div key={product.id} className="bg-white rounded-2xl border border-border/50 shadow-sm p-4 hover:shadow-md transition-all duration-200">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <div className="h-11 w-11 rounded-xl bg-brand/5 text-brand border border-brand/10 flex items-center justify-center shrink-0 overflow-hidden shadow-inner">
+                                                {product.image_url ? (
+                                                    <img src={product.image_url} alt={product.name} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <Package className="h-5 w-5" />
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className="text-sm font-bold text-text-primary truncate">{product.name}</span>
+                                                <span className="text-[10px] font-mono text-text-muted tracking-tight uppercase">{product.sku}</span>
+                                            </div>
+                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-text-primary shrink-0">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/inventory/products/${product.id}`} className="flex items-center cursor-pointer">
+                                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <Can permission="products.edit">
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/inventory/products/${product.id}/edit`} className="flex items-center cursor-pointer">
+                                                            <Edit2 className="mr-2 h-4 w-4" /> Edit Product
+                                                        </Link>
+                                                    </DropdownMenuItem>
+                                                </Can>
+                                                <DropdownMenuSeparator />
+                                                <Can permission="products.delete">
+                                                    <DropdownMenuItem 
+                                                        className="text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer"
+                                                        onClick={() => openDelete(product)}
+                                                    >
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Product
+                                                    </DropdownMenuItem>
+                                                </Can>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                    <div className="mt-3 flex flex-wrap items-center gap-2 pl-[56px]">
+                                        <span className="text-xs text-text-secondary">{product.category?.name || 'Uncategorized'}</span>
+                                        {product.requires_prescription && (
+                                            <Badge variant="outline" className="text-[9px] h-4 px-1.5 border-info/30 text-info bg-info/5 uppercase leading-none">Rx</Badge>
+                                        )}
+                                        {product.is_expirable && (
+                                            <Badge variant="secondary" className="text-[9px] h-4 px-1.5 bg-warning-bg/50 text-warning-foreground border-none">Expirable</Badge>
+                                        )}
+                                    </div>
+                                    <div className="mt-3 flex items-center justify-between pl-[56px] pt-2 border-t border-border/30">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-bold text-text-primary">{product.quantity_on_hand || 0}</span>
+                                            <span className="text-[10px] text-text-muted uppercase font-medium">{product.unit_of_measure?.abbreviation || 'units'}</span>
+                                        </div>
+                                        <StockLevelIndicator currentStock={product.quantity_on_hand || 0} reorderLevel={product.reorder_level} />
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="flex flex-col items-center justify-center py-20 text-center gap-3 bg-white rounded-2xl border border-border">
+                                <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center text-text-muted/30">
+                                    <Package className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <p className="font-semibold text-text-primary">No products found</p>
+                                    <p className="text-sm text-text-muted mt-1">Try adjusting your search or add a new product to the catalog.</p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

@@ -34,7 +34,12 @@ export function TransferDialog({ isOpen, onClose, locations }: Props) {
     const [searchResults, setSearchResults] = useState<Product[]>([]);
     const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
     
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm<{
+        stock_batch_id: string;
+        target_location_id: string;
+        quantity: string;
+        error?: string;
+    }>({
         stock_batch_id: '',
         target_location_id: '',
         quantity: '',

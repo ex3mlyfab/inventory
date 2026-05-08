@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Head, useForm, router } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
 import { DataTable, Column } from '@/components/shared/data-table';
-import { UnitOfMeasure } from '@/types/inventory';
+import { UnitOfMeasure, PaginationMeta } from '@/types/inventory';
 import { Button } from '@/components/ui/button';
 import { Plus, Ruler, Edit2, Trash2, Scale, Search, X, MoreHorizontal } from 'lucide-react';
 import { Can } from '@/components/can';
@@ -72,7 +72,7 @@ export default function UnitsIndex({ units, filters, base_units }: Props) {
         conversion_factor: 1
     });
 
-    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors: clearDeleteErrors } = useForm({});
+    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors: clearDeleteErrors } = useForm<{ error?: string }>({});
 
     const openCreate = () => {
         setEditingUnit(null);
@@ -323,7 +323,7 @@ export default function UnitsIndex({ units, filters, base_units }: Props) {
                                             onChange={e => setData('conversion_factor', parseFloat(e.target.value))} 
                                         />
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-text-muted">
-                                            {units.find(u => u.id === data.base_unit_id)?.abbreviation}
+                                            {units.data.find((u: UnitOfMeasure) => u.id === data.base_unit_id)?.abbreviation}
                                         </div>
                                     </div>
                                     <p className="text-[10px] text-text-muted italic">How many base units are in this unit?</p>

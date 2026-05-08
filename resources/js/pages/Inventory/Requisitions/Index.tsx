@@ -19,14 +19,15 @@ import { Requisition, PaginationMeta } from '@/types/inventory';
 import {
     Plus, Search, MoreHorizontal, Eye,
     ClipboardList, ArrowRightLeft, ShoppingCart,
-    Clock, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight
+    Clock, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight,
+    Building2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
     requisitions: { data: Requisition[] } & PaginationMeta;
     filters: { search?: string; type?: string; status?: string };
-    stats: { total: number; pending_l1: number; pending_l2: number; internal: number; purchase: number };
+    stats: { total: number; pending_l1: number; pending_l2: number; internal: number; departmental: number; purchase: number };
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -42,6 +43,7 @@ const STATUS_STYLES: Record<string, string> = {
 
 const TYPE_ICONS = {
     internal: <ArrowRightLeft className="h-4 w-4 text-brand" />,
+    departmental: <Building2 className="h-4 w-4 text-blue-600" />,
     purchase: <ShoppingCart className="h-4 w-4 text-amber-600" />,
 };
 
@@ -58,6 +60,8 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                 <div className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
                     req.type === 'internal'
                         ? 'bg-brand/10 text-brand'
+                        : req.type === 'departmental'
+                        ? 'bg-blue-50 text-blue-700'
                         : 'bg-amber-50 text-amber-700'
                 }`}>
                     {TYPE_ICONS[req.type]}
@@ -165,23 +169,23 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
     ];
 
     return (
-        <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
-            <Head title="Requisitions" />
+        <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 animate-in fade-in duration-700">
+            <Head title="Requisition Register" />
 
             <PageHeader
                 title="Requisition Management"
                 description="Manage internal store transfers and external purchase requests."
             >
-                <div className="flex items-center gap-3">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                     <Can permission="requisitions.create">
-                        <Link href="/procurement/requisitions/create?type=internal">
-                            <Button variant="outline" className="border-brand/20 text-brand hover:bg-brand/5 gap-2">
+                        <Link href="/procurement/requisitions/create?type=internal" className="w-full sm:w-auto">
+                            <Button variant="outline" className="w-full border-brand/20 text-brand hover:bg-brand/5 gap-2 h-10">
                                 <ArrowRightLeft className="h-4 w-4" />
                                 Internal Request
                             </Button>
                         </Link>
-                        <Link href="/procurement/requisitions/create?type=purchase">
-                            <Button className="bg-brand hover:bg-brand-dark text-brand-foreground shadow-md gap-2">
+                        <Link href="/procurement/requisitions/create?type=purchase" className="w-full sm:w-auto">
+                            <Button className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-md gap-2 h-10">
                                 <ShoppingCart className="h-4 w-4" />
                                 Purchase Request
                             </Button>
@@ -191,105 +195,140 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
             </PageHeader>
 
             {/* Stats row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-border/50 shadow-sm border-l-4 border-l-brand">
-                    <CardContent className="p-4 flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                            <ClipboardList className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Total Requests</p>
-                            <p className="text-xl font-extrabold text-text-primary">{stats.total}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-border/50 shadow-sm border-l-4 border-l-amber-500">
-                    <CardContent className="p-4 flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                            <Clock className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pending L1 (Dept)</p>
-                            <p className="text-xl font-extrabold text-text-primary">{stats.pending_l1}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-border/50 shadow-sm border-l-4 border-l-blue-500">
-                    <CardContent className="p-4 flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                            <AlertCircle className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Pending L2 (MD)</p>
-                            <p className="text-xl font-extrabold text-text-primary">{stats.pending_l2}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-border/50 shadow-sm border-l-4 border-l-emerald-500">
-                    <CardContent className="p-4 flex items-center gap-3">
-                        <div className="h-10 w-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                            <ShoppingCart className="h-5 w-5" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted">Purchase Req</p>
-                            <p className="text-xl font-extrabold text-text-primary">{stats.purchase}</p>
-                        </div>
-                    </CardContent>
-                </Card>
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                {[
+                    { label: 'Total Requests', value: stats.total, icon: ClipboardList, color: 'text-slate-600 bg-slate-50', border: 'border-l-slate-400' },
+                    { label: 'Pending Dept', value: stats.pending_l1, icon: Clock, color: 'text-amber-600 bg-amber-50', border: 'border-l-amber-500' },
+                    { label: 'Pending MD', value: stats.pending_l2, icon: AlertCircle, color: 'text-blue-600 bg-blue-50', border: 'border-l-blue-500' },
+                    { label: 'Dept. Issues', value: stats.departmental, icon: Building2, color: 'text-indigo-600 bg-indigo-50', border: 'border-l-indigo-500' },
+                    { label: 'Purchases', value: stats.purchase, icon: ShoppingCart, color: 'text-emerald-600 bg-emerald-50', border: 'border-l-emerald-500' },
+                ].map((s) => (
+                    <Card key={s.label} className={cn("border-border/50 shadow-sm border-l-4 overflow-hidden", s.border)}>
+                        <CardContent className="p-4 flex items-center gap-3">
+                            <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center shrink-0", s.color)}>
+                                <s.icon className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[9px] font-black uppercase tracking-widest text-text-muted truncate">{s.label}</p>
+                                <p className="text-xl font-extrabold text-text-primary tracking-tight">{s.value}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap gap-3 items-center">
-                <form onSubmit={(e) => { e.preventDefault(); filter({ search }); }} className="flex gap-2 flex-1 min-w-[220px] max-w-sm">
+            <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
+                <form onSubmit={(e) => { e.preventDefault(); filter({ search }); }} className="flex gap-2 flex-1">
                     <div className="relative flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                         <Input
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder="Search reference, requester…"
-                            className="pl-9 h-10 bg-muted/30 border-transparent focus-visible:ring-brand/20"
+                            className="pl-9 h-11 bg-muted/30 border-transparent focus-visible:ring-brand/20"
                         />
                     </div>
-                    <Button type="submit" variant="outline" size="icon" className="h-10 w-10 shrink-0">
+                    <Button type="submit" variant="outline" size="icon" className="h-11 w-11 shrink-0">
                         <Search className="h-4 w-4" />
                     </Button>
                 </form>
 
-                <Select value={filters.type ?? 'all'} onValueChange={(v) => filter({ type: v === 'all' ? undefined : v })}>
-                    <SelectTrigger className="h-10 w-44 bg-muted/30 border-transparent">
-                        <SelectValue placeholder="All Types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="internal">Internal Transfer</SelectItem>
-                        <SelectItem value="purchase">Purchase Request</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <Select value={filters.type ?? 'all'} onValueChange={(v) => filter({ type: v === 'all' ? undefined : v })}>
+                        <SelectTrigger className="h-11 w-full sm:w-44 bg-muted/30 border-transparent">
+                            <SelectValue placeholder="All Types" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="internal">Internal Transfer</SelectItem>
+                            <SelectItem value="departmental">Departmental Issue</SelectItem>
+                            <SelectItem value="purchase">Purchase Request</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                <Select value={filters.status ?? 'all'} onValueChange={(v) => filter({ status: v === 'all' ? undefined : v })}>
-                    <SelectTrigger className="h-10 w-48 bg-muted/30 border-transparent">
-                        <SelectValue placeholder="All Statuses" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="submitted">Pending Dept (L1)</SelectItem>
-                        <SelectItem value="level1_approved">Pending MD (L2)</SelectItem>
-                        <SelectItem value="approved">Fully Approved</SelectItem>
-                        <SelectItem value="rejected">Rejected</SelectItem>
-                        <SelectItem value="cancelled">Cancelled</SelectItem>
-                    </SelectContent>
-                </Select>
+                    <Select value={filters.status ?? 'all'} onValueChange={(v) => filter({ status: v === 'all' ? undefined : v })}>
+                        <SelectTrigger className="h-11 w-full sm:w-48 bg-muted/30 border-transparent">
+                            <SelectValue placeholder="All Statuses" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="submitted">Pending Dept (L1)</SelectItem>
+                            <SelectItem value="level1_approved">Pending MD (L2)</SelectItem>
+                            <SelectItem value="approved">Fully Approved</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
 
-            {/* Table */}
+            {/* Table / List */}
             <div className="bg-white rounded-2xl border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-                <DataTable 
-                    columns={columns}
-                    data={requisitions.data}
-                    meta={requisitions}
-                    keyExtractor={(r) => String(r.id)}
-                    emptyMessage="No requisitions found."
-                />
+                <div className="hidden md:block">
+                    <DataTable 
+                        columns={columns}
+                        data={requisitions.data}
+                        meta={requisitions}
+                        keyExtractor={(r) => String(r.id)}
+                        emptyMessage="No requisitions found."
+                    />
+                </div>
+
+                {/* Mobile List View */}
+                <div className="md:hidden flex flex-col divide-y divide-border/30">
+                    {requisitions.data.map((req) => (
+                        <Link 
+                            key={req.id} 
+                            href={`/procurement/requisitions/${req.id}`}
+                            className="p-5 hover:bg-muted/5 transition-colors active:bg-muted/10 flex flex-col gap-4"
+                        >
+                            <div className="flex items-start justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm transition-transform group-hover:scale-110",
+                                        req.type === 'internal' ? 'bg-brand/10 text-brand' : 
+                                        req.type === 'departmental' ? 'bg-blue-100 text-blue-700' :
+                                        'bg-amber-100 text-amber-700'
+                                    )}>
+                                        {TYPE_ICONS[req.type]}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-black text-text-primary leading-tight font-mono truncate">{req.reference}</p>
+                                        <p className="text-[10px] text-text-muted mt-1 font-bold uppercase tracking-widest">
+                                            {req.type.replace('_', ' ')} Requisition
+                                        </p>
+                                    </div>
+                                </div>
+                                <Badge variant="outline" className={cn("text-[9px] font-black uppercase whitespace-nowrap shadow-sm border-transparent px-2 py-0.5", STATUS_STYLES[req.status])}>
+                                    {req.status.replace('_', ' ').replace('level1', 'Dept').replace('level2', 'MD')}
+                                </Badge>
+                            </div>
+
+                            <div className="p-3 bg-muted/20 rounded-2xl border border-border/30">
+                                <p className="text-[11px] text-text-secondary font-medium line-clamp-2 italic leading-relaxed">
+                                    "{req.purpose ?? 'Stock replenishment request'}"
+                                </p>
+                            </div>
+
+                            <div className="flex items-center justify-between mt-1">
+                                <div className="flex items-center gap-3">
+                                    <div className="h-8 w-8 rounded-full bg-muted/40 flex items-center justify-center text-[10px] font-black text-text-muted">
+                                        {req.requester?.name?.charAt(0) ?? '?'}
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-text-primary leading-tight">{req.requester?.name ?? '—'}</p>
+                                        <p className="text-[9px] text-text-muted mt-0.5">{new Date(req.created_at).toLocaleDateString('en-NG', { day: '2-digit', month: 'short' })}</p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-0.5">Items</p>
+                                    <p className="text-sm font-black text-text-primary">{req.items?.length ?? 0}</p>
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
                 
                 {requisitions.data.length === 0 && (
                     <div className="flex flex-col items-center py-24 gap-6 text-center border-t border-border">

@@ -40,7 +40,7 @@ export default function LocationsIndex({ locations, departments }: Props) {
         is_active: true
     });
 
-    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors: clearDeleteErrors } = useForm({});
+    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors: clearDeleteErrors } = useForm<{ error?: string }>({});
 
     const openCreate = () => {
         setEditingLocation(null);
@@ -145,7 +145,8 @@ export default function LocationsIndex({ locations, departments }: Props) {
                 </PageHeader>
 
                 <div className="bg-white rounded-2xl border border-border shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
-                    <div className="grid grid-cols-12 bg-muted/30 px-6 py-3 border-b border-border text-[11px] font-bold uppercase tracking-widest text-text-muted">
+                    {/* Desktop Table Header */}
+                    <div className="hidden md:grid grid-cols-12 bg-muted/30 px-6 py-3 border-b border-border text-[11px] font-bold uppercase tracking-widest text-text-muted">
                         <div className="col-span-5">Location Details</div>
                         <div className="col-span-3 text-center">Type</div>
                         <div className="col-span-2 text-center">Status</div>
@@ -155,60 +156,112 @@ export default function LocationsIndex({ locations, departments }: Props) {
                     {locations.length > 0 ? (
                         <div className="flex flex-col w-full divide-y divide-border/30">
                             {locations.map((loc) => (
-                                <div key={loc.id} className="grid grid-cols-12 items-center px-6 py-4 hover:bg-brand/5 transition-colors duration-200">
-                                    <div className="col-span-5 flex items-center gap-4">
-                                        <div className={`p-2.5 rounded-xl bg-brand/10 text-brand shadow-sm`}>
-                                            {getTypeIcon(loc.type)}
-                                        </div>
-                                        <div className="flex flex-col truncate">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-sm font-semibold text-text-primary">{loc.name}</span>
-                                                <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono text-text-muted">{loc.code}</span>
+                                <React.Fragment key={loc.id}>
+                                    {/* ── Desktop Row ──────────────────────── */}
+                                    <div className="hidden md:grid grid-cols-12 items-center px-6 py-4 hover:bg-brand/5 transition-colors duration-200">
+                                        <div className="col-span-5 flex items-center gap-4">
+                                            <div className={`p-2.5 rounded-xl bg-brand/10 text-brand shadow-sm`}>
+                                                {getTypeIcon(loc.type)}
                                             </div>
-                                            <div className="flex items-center gap-1.5 mt-0.5">
-                                                <Building2 className="w-3.5 h-3.5 text-text-muted" />
-                                                <span className="text-xs text-text-muted">
-                                                    {loc.department?.name || 'No Department'}
-                                                </span>
+                                            <div className="flex flex-col truncate">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-semibold text-text-primary">{loc.name}</span>
+                                                    <span className="text-[10px] bg-muted px-1.5 py-0.5 rounded font-mono text-text-muted">{loc.code}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <Building2 className="w-3.5 h-3.5 text-text-muted" />
+                                                    <span className="text-xs text-text-muted">
+                                                        {loc.department?.name || 'No Department'}
+                                                    </span>
+                                                </div>
                                             </div>
+                                        </div>
+
+                                        <div className="col-span-3 flex justify-center">
+                                            <span className="text-xs font-medium text-text-secondary px-3 py-1 bg-surface rounded-lg border border-border/50">
+                                                {getTypeLabel(loc.type)}
+                                            </span>
+                                        </div>
+
+                                        <div className="col-span-2 flex justify-center">
+                                            <StatusBadge variant={loc.is_active ? 'success' : 'draft'}>
+                                                {loc.is_active ? 'Active' : 'Inactive'}
+                                            </StatusBadge>
+                                        </div>
+
+                                        <div className="col-span-2 flex justify-end gap-1">
+                                            <Can permission="locations.manage">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-brand">
+                                                            <MoreVertical className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-40">
+                                                        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => window.location.href = `/inventory/locations/${loc.id}`}>
+                                                            <Eye className="w-3.5 h-3.5" /> View Store
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openEdit(loc)}>
+                                                            <Edit2 className="w-3.5 h-3.5" /> Edit Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={() => openDelete(loc)}>
+                                                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </Can>
                                         </div>
                                     </div>
 
-                                    <div className="col-span-3 flex justify-center">
-                                        <span className="text-xs font-medium text-text-secondary px-3 py-1 bg-surface rounded-lg border border-border/50">
-                                            {getTypeLabel(loc.type)}
-                                        </span>
+                                    {/* ── Mobile Card ──────────────────────── */}
+                                    <div className="flex md:hidden flex-col p-4 gap-3 hover:bg-brand/5 transition-colors duration-200">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className="p-2.5 rounded-xl bg-brand/10 text-brand shadow-sm shrink-0">
+                                                    {getTypeIcon(loc.type)}
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className="text-sm font-semibold text-text-primary truncate">{loc.name}</span>
+                                                    <span className="text-[10px] font-mono text-text-muted uppercase tracking-tight">{loc.code}</span>
+                                                </div>
+                                            </div>
+                                            <Can permission="locations.manage">
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-brand shrink-0">
+                                                            <MoreVertical className="w-4 h-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end" className="w-40">
+                                                        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => window.location.href = `/inventory/locations/${loc.id}`}>
+                                                            <Eye className="w-3.5 h-3.5" /> View Store
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openEdit(loc)}>
+                                                            <Edit2 className="w-3.5 h-3.5" /> Edit Details
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={() => openDelete(loc)}>
+                                                            <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </Can>
+                                        </div>
+                                        <div className="flex flex-wrap items-center gap-2 pl-[52px]">
+                                            <span className="text-xs font-medium text-text-secondary px-2.5 py-1 bg-surface rounded-lg border border-border/50">
+                                                {getTypeLabel(loc.type)}
+                                            </span>
+                                            <StatusBadge variant={loc.is_active ? 'success' : 'draft'}>
+                                                {loc.is_active ? 'Active' : 'Inactive'}
+                                            </StatusBadge>
+                                        </div>
+                                        <div className="flex items-center gap-1.5 pl-[52px]">
+                                            <Building2 className="w-3.5 h-3.5 text-text-muted" />
+                                            <span className="text-xs text-text-muted">
+                                                {loc.department?.name || 'No Department'}
+                                            </span>
+                                        </div>
                                     </div>
-
-                                    <div className="col-span-2 flex justify-center">
-                                        <StatusBadge variant={loc.is_active ? 'success' : 'draft'}>
-                                            {loc.is_active ? 'Active' : 'Inactive'}
-                                        </StatusBadge>
-                                    </div>
-
-                                    <div className="col-span-2 flex justify-end gap-1">
-                                        <Can permission="locations.manage">
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-text-muted hover:text-brand">
-                                                        <MoreVertical className="w-4 h-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end" className="w-40">
-                                                    <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => window.location.href = `/inventory/locations/${loc.id}`}>
-                                                        <Eye className="w-3.5 h-3.5" /> View Store
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="gap-2 cursor-pointer" onClick={() => openEdit(loc)}>
-                                                        <Edit2 className="w-3.5 h-3.5" /> Edit Details
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuItem className="gap-2 cursor-pointer text-destructive focus:text-destructive" onClick={() => openDelete(loc)}>
-                                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </Can>
-                                    </div>
-                                </div>
+                                </React.Fragment>
                             ))}
                         </div>
                     ) : (

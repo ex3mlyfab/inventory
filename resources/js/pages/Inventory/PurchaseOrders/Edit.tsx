@@ -34,7 +34,7 @@ export default function PurchaseOrderEdit({ order, suppliers, products }: Props)
     });
 
     const addItem = () => {
-        setData('items', [...data.items, { product_id: '', product_name: '', quantity: 1, unit_price: 0 }]);
+        setData('items', [...data.items, { id: '', product_id: '', product_name: '', quantity: 1, unit_price: 0 }]);
     };
 
     const removeItem = (index: number) => {
@@ -43,16 +43,16 @@ export default function PurchaseOrderEdit({ order, suppliers, products }: Props)
         setData('items', newItems);
     };
 
-    const updateItem = (index: number, key: string, value: any) => {
-        const newItems = [...data.items];
+    const updateItem = (index: number, key: string, value: string | number) => {
+        const newItems = [...data.items] as Array<Record<string, string | number | undefined>>;
         if (key === 'product_id') {
             const p = products.find(prod => prod.id === value);
-            newItems[index].product_id = value;
+            newItems[index].product_id = value as string;
             newItems[index].product_name = p?.name ?? '';
         } else {
             newItems[index][key] = value;
         }
-        setData('items', newItems);
+        setData('items', newItems as typeof data.items);
     };
 
     const totalAmount = data.items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);

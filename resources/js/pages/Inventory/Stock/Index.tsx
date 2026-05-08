@@ -61,12 +61,12 @@ export default function StockIndex({ products, stats, locations, departments, ca
             header: 'Product Details',
             cell: (product) => (
                 <div className="flex flex-col py-1">
-                    <span className="font-bold text-slate-900 leading-tight">{product.name}</span>
+                    <span className="font-bold text-text-primary leading-tight">{product.name}</span>
                     <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                        <span className="text-[10px] font-mono bg-muted text-text-muted px-1.5 py-0.5 rounded uppercase tracking-wider">
                             {product.sku}
                         </span>
-                        <span className="text-[10px] text-slate-400 font-medium">
+                        <span className="text-[10px] text-text-muted font-medium">
                             {product.category?.name}
                         </span>
                     </div>
@@ -78,8 +78,8 @@ export default function StockIndex({ products, stats, locations, departments, ca
             cell: (product) => (
                 <div className="flex flex-col">
                     <div className="flex items-baseline gap-1.5">
-                        <span className="text-sm font-black text-slate-900">{product.current_stock ?? 0}</span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{product.unit_of_measure?.abbreviation || 'Units'}</span>
+                        <span className="text-sm font-black text-text-primary">{product.current_stock ?? 0}</span>
+                        <span className="text-[10px] font-bold text-text-muted uppercase tracking-tight">{product.unit_of_measure?.abbreviation || 'Units'}</span>
                     </div>
                 </div>
             )
@@ -107,7 +107,7 @@ export default function StockIndex({ products, stats, locations, departments, ca
             cell: (product) => (
                 <div className="flex justify-end gap-2 pr-4">
                     <Link href={`/inventory/stock/${product.id}/batches`}>
-                        <Button variant="ghost" size="sm" className="h-8 text-slate-600 hover:text-brand hover:bg-brand/5 font-bold text-xs uppercase tracking-wider">
+                        <Button variant="ghost" size="sm" className="h-8 text-text-secondary hover:text-brand hover:bg-brand/5 font-bold text-xs uppercase tracking-wider">
                             Breakdown
                         </Button>
                     </Link>
@@ -138,14 +138,14 @@ export default function StockIndex({ products, stats, locations, departments, ca
                         <Can permission="stock.view">
                             <Link href={'/inventory/stock-movements'}>
                                 <Button variant="outline" size="sm" className="h-9 shadow-sm">
-                                    <ArrowRightLeft className="w-4 h-4 mr-2 text-slate-500" />
+                                    <ArrowRightLeft className="w-4 h-4 mr-2 text-text-muted" />
                                     Movements
                                 </Button>
                             </Link>
                         </Can>
                         <Can permission="stock.adjust">
                             <Link href={'/inventory/stock-adjustments'}>
-                                <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
+                                <Button size="sm" className="bg-brand hover:bg-brand-dark text-brand-foreground h-9 shadow-md transition-all active:scale-95">
                                     <SlidersHorizontal className="w-4 h-4 mr-2" />
                                     Adjustments
                                 </Button>
@@ -156,15 +156,15 @@ export default function StockIndex({ products, stats, locations, departments, ca
 
                 {/* Dashboard Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card className="border-slate-200/60 shadow-sm overflow-hidden group hover:border-brand/40 transition-colors">
+                    <Card className="border-border/60 shadow-sm overflow-hidden group hover:border-brand/40 transition-colors">
                         <CardContent className="p-5 flex items-center justify-between">
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-slate-400 group-hover:text-brand/70 transition-colors">Total Items</p>
-                                <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-text-muted group-hover:text-brand/70 transition-colors">Total Items</p>
+                                <p className="text-2xl font-black text-text-primary tracking-tighter">
                                     {stats.total_items.toLocaleString()}
                                 </p>
                             </div>
-                            <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-brand/10 group-hover:text-brand transition-all">
+                            <div className="h-10 w-10 rounded-xl bg-muted/50 flex items-center justify-center text-text-muted group-hover:bg-brand/10 group-hover:text-brand transition-all">
                                 <Package className="h-5 w-5" />
                             </div>
                         </CardContent>
@@ -175,7 +175,7 @@ export default function StockIndex({ products, stats, locations, departments, ca
                             <CardContent className="p-5 flex items-center justify-between">
                                 <div className="space-y-1">
                                     <p className="text-[10px] font-black uppercase tracking-[0.1em] text-indigo-400">Inventory Value</p>
-                                    <p className="text-2xl font-black text-slate-900 tracking-tighter">
+                                    <p className="text-2xl font-black text-text-primary tracking-tighter">
                                         {formatCurrency(stats.total_value)}
                                     </p>
                                 </div>
@@ -190,11 +190,11 @@ export default function StockIndex({ products, stats, locations, departments, ca
                         <CardContent className="p-5 flex items-center justify-between">
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-[0.1em] text-amber-500">Low Stock Alerts</p>
-                                <p className={`text-2xl font-black tracking-tighter ${stats.low_stock_count > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
+                                <p className={`text-2xl font-black tracking-tighter ${stats.low_stock_count > 0 ? 'text-amber-600' : 'text-text-primary'}`}>
                                     {stats.low_stock_count}
                                 </p>
                             </div>
-                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${stats.low_stock_count > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
+                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${stats.low_stock_count > 0 ? 'bg-amber-100 text-amber-600' : 'bg-muted/50 text-text-muted'}`}>
                                 <AlertTriangle className="h-5 w-5" />
                             </div>
                         </CardContent>
@@ -204,11 +204,11 @@ export default function StockIndex({ products, stats, locations, departments, ca
                         <CardContent className="p-5 flex items-center justify-between">
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black uppercase tracking-[0.1em] text-rose-500">Expiring Soon</p>
-                                <p className={`text-2xl font-black tracking-tighter ${stats.expiring_soon > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                                <p className={`text-2xl font-black tracking-tighter ${stats.expiring_soon > 0 ? 'text-rose-600' : 'text-text-primary'}`}>
                                     {stats.expiring_soon}
                                 </p>
                             </div>
-                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${stats.expiring_soon > 0 ? 'bg-rose-100 text-rose-600' : 'bg-slate-50 text-slate-400'}`}>
+                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${stats.expiring_soon > 0 ? 'bg-rose-100 text-rose-600' : 'bg-muted/50 text-text-muted'}`}>
                                 <Calendar className="h-5 w-5" />
                             </div>
                         </CardContent>
@@ -216,13 +216,13 @@ export default function StockIndex({ products, stats, locations, departments, ca
                 </div>
 
                 {/* Enhanced Filter Bar */}
-                <Card className="border-slate-200/60 shadow-md">
+                <Card className="border-border/60 shadow-md">
                     <CardContent className="p-4 flex flex-col md:flex-row gap-4">
                         <div className="relative flex-grow">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                             <Input 
                                 placeholder="Search products by name or SKU..." 
-                                className="pl-10 h-10 border-slate-200/80 focus:ring-brand/20 transition-all font-medium text-slate-900"
+                                className="pl-10 h-10 border-border/80 focus:ring-brand/20 transition-all font-medium text-text-primary"
                                 defaultValue={filters.search}
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') handleFilterChange('search', (e.target as HTMLInputElement).value);
@@ -232,12 +232,12 @@ export default function StockIndex({ products, stats, locations, departments, ca
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:w-[480px]">
                             <div className="flex items-center gap-2">
-                                <Building2 className="h-4 w-4 text-slate-400 shrink-0" />
+                                <Building2 className="h-4 w-4 text-text-muted shrink-0" />
                                 <Select 
                                     value={filters.department_id || 'all'} 
                                     onValueChange={(v) => handleFilterChange('department_id', v === 'all' ? '' : v)}
                                 >
-                                    <SelectTrigger className="h-10 border-slate-200/80 bg-slate-50/30 font-bold text-xs uppercase tracking-widest text-slate-600">
+                                    <SelectTrigger className="h-10 border-border/80 bg-muted/30 font-bold text-xs uppercase tracking-widest text-text-secondary">
                                         <SelectValue placeholder="All Departments" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -250,12 +250,12 @@ export default function StockIndex({ products, stats, locations, departments, ca
                             </div>
 
                             <div className="flex items-center gap-2">
-                                <Store className="h-4 w-4 text-slate-400 shrink-0" />
+                                <Store className="h-4 w-4 text-text-muted shrink-0" />
                                 <Select 
                                     value={filters.store_id || 'all'} 
                                     onValueChange={(v) => handleFilterChange('store_id', v === 'all' ? '' : v)}
                                 >
-                                    <SelectTrigger className="h-10 border-slate-200/80 bg-slate-50/30 font-bold text-xs uppercase tracking-widest text-slate-600">
+                                    <SelectTrigger className="h-10 border-border/80 bg-muted/30 font-bold text-xs uppercase tracking-widest text-text-secondary">
                                         <SelectValue placeholder="All Stores" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -284,14 +284,14 @@ export default function StockIndex({ products, stats, locations, departments, ca
                     </CardContent>
                 </Card>
 
-                <div className="bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden shadow-slate-200/50">
+                <div className="bg-white rounded-xl border border-border shadow-xl overflow-hidden shadow-brand/5">
                     <DataTable 
                         columns={columns}
                         data={products.data}
                         meta={products}
                         keyExtractor={(p) => p.id}
                         emptyMessage="No inventory found in the selected scope. Try adjusting filters."
-                        headerBackground="bg-slate-50/50"
+                        headerBackground="bg-muted/30"
                     />
                 </div>
             </div>

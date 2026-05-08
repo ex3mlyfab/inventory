@@ -30,7 +30,7 @@ interface Props {
 }
 
 export default function HoldingsIndex({ 
-    products = { data: [] }, 
+    products = { data: [], current_page: 1, from: null, last_page: 1, path: '', per_page: 15, to: null, total: 0, links: [] } as Props['products'], 
     stats = { total_items: 0, low_stock_count: 0 }, 
     filters, 
     department_name 

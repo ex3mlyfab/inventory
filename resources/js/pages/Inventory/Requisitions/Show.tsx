@@ -20,6 +20,7 @@ import {
     FileSpreadsheet, MapPin, BadgeCheck
 } from 'lucide-react';
 import { IssueItemsDialog } from './Partials/IssueItemsDialog';
+import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
@@ -55,9 +56,14 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
     const isInternal     = requisition.type === 'internal';
     const isDepartmental = requisition.type === 'departmental';
     const isPurchase     = requisition.type === 'purchase';
+    const typeLabel      = isInternal ? 'Internal Transfer' : isDepartmental ? 'Departmental Request' : 'Purchase Request';
+
     const [showApprovePanel, setShowApprovePanel] = useState(false);
     const [showRejectPanel, setShowRejectPanel]   = useState(false);
     const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
+    const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+    const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
+    const [actionProcessing, setActionProcessing] = useState(false);
 
     const currentLevel = canApproveL1 ? 1 : canApproveL2 ? 2 : 0;
 
@@ -97,9 +103,13 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
 
     // ── Cancel ──────────────────────────────────────────────────────────
     const handleCancel = () => {
-        if (window.confirm('Are you sure you want to cancel this requisition?')) {
-            router.post(`/procurement/requisitions/${requisition.id}/cancel`);
-        }
+        setActionProcessing(true);
+        router.post(`/procurement/requisitions/${requisition.id}/cancel`, {}, {
+            onFinish: () => {
+                setActionProcessing(false);
+                setIsCancelDialogOpen(false);
+            },
+        });
     };
 
     const totalRequested = requisition.items.reduce((s, i) => s + i.quantity_requested, 0);
@@ -108,14 +118,18 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
 
 
     const handleReceive = () => {
-        if (window.confirm('Are you sure you have received these items? This will update your store/department inventory.')) {
-            router.post(`/procurement/requisitions/${requisition.id}/receive`);
-        }
+        setActionProcessing(true);
+        router.post(`/procurement/requisitions/${requisition.id}/receive`, {}, {
+            onFinish: () => {
+                setActionProcessing(false);
+                setIsReceiveDialogOpen(false);
+            },
+        });
     };
 
     return (
         <div className="flex flex-col gap-6 py-6 sm:py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 animate-in fade-in duration-500">
-            <Head title={`Requisition: ${requisition.reference}`} />
+            <Head title={`${typeLabel}: ${requisition.reference}`} />
 
             {/* Breadcrumb back */}
             <div className="flex flex-col gap-4">
@@ -125,7 +139,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                 </Link>
 
                 <PageHeader
-                    title={requisition.reference}
+                    title={`${typeLabel}: ${requisition.reference}`}
                     description={
                         <div className="flex flex-col gap-1.5 mt-2">
                             <div className="flex items-center gap-2 text-text-primary">
@@ -144,7 +158,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                     }
                     className="pb-2"
                 >
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
                         <Badge variant="outline" className={cn("text-[9px] font-black uppercase tracking-widest px-2 py-0.5 border-transparent shadow-sm", STATUS_STYLES[requisition.status])}>
                             {requisition.status.replace('_', ' ').replace('level1', 'Dept').replace('level2', 'MD')}
                         </Badge>
@@ -161,7 +175,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                         </Badge>
                         
                         {requisition.status === 'approved' && (
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <Link href={`/procurement/requisitions/${requisition.id}/print`} target="_blank">
                                     <Button variant="outline" size="sm" className="gap-2 h-8 font-bold text-[10px] uppercase tracking-wider border-border/50 hover:bg-muted/50 transition-all">
                                         <Printer className="h-3.5 w-3.5" />
@@ -190,9 +204,9 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
 
                             return (
                                 <Button 
-                                    className="bg-brand hover:bg-brand-dark shadow-lg shadow-brand/10 h-8 text-[10px] font-black uppercase tracking-widest px-4" 
+                                    className="bg-brand hover:bg-brand-dark shadow-lg shadow-brand/10 h-8 text-[10px] font-black uppercase tracking-widest px-4 w-full sm:w-auto" 
                                     size="sm"
-                                    onClick={handleReceive}
+                                    onClick={() => setIsReceiveDialogOpen(true)}
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
                                     Confirm Receipt
@@ -204,7 +218,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                         <Can permission="requisitions.issue">
                             {(requisition.status === 'approved' || requisition.status === 'partially_issued' || requisition.status === 'in_transit') && (
                                 <Button 
-                                    className="bg-brand hover:bg-brand-dark shadow-lg shadow-brand/10 h-8 text-[10px] font-black uppercase tracking-widest px-4" 
+                                    className="bg-brand hover:bg-brand-dark shadow-lg shadow-brand/10 h-8 text-[10px] font-black uppercase tracking-widest px-4 w-full sm:w-auto" 
                                     size="sm"
                                     onClick={() => setIsIssueDialogOpen(true)}
                                 >
@@ -285,29 +299,31 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                                                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-tight">{item.product?.sku}</p>
                                                             </div>
                                                         </div>
-                                                        <div className="grid grid-cols-2 sm:flex sm:items-center gap-4">
-                                                            <div className="space-y-1.5 min-w-[100px]">
-                                                                <Label className="text-[9px] font-black uppercase text-text-muted tracking-widest">Requested</Label>
-                                                                <div className="h-10 px-3 bg-muted/20 border border-transparent rounded-xl flex items-center text-sm font-bold text-text-secondary">
-                                                                    {line.quantity_requested} <span className="ml-1 text-[10px] font-normal">{item.product?.unit_of_measure?.abbreviation}</span>
+                                                        <div className="grid grid-cols-1 sm:flex sm:items-center gap-4 w-full">
+                                                            <div className="grid grid-cols-2 sm:flex sm:items-center gap-4 flex-1">
+                                                                <div className="space-y-1.5 min-w-[80px]">
+                                                                    <Label className="text-[9px] font-black uppercase text-text-muted tracking-widest">Requested</Label>
+                                                                    <div className="h-10 px-3 bg-muted/20 border border-transparent rounded-xl flex items-center text-sm font-bold text-text-secondary">
+                                                                        {line.quantity_requested} <span className="ml-1 text-[10px] font-normal">{item.product?.unit_of_measure?.abbreviation}</span>
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-1.5 min-w-[100px]">
+                                                                    <Label className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Approve</Label>
+                                                                    <Input
+                                                                        type="number"
+                                                                        min="0"
+                                                                        value={line.quantity_approved}
+                                                                        onChange={(e) => {
+                                                                            const updated = [...approveForm.data.items];
+                                                                            updated[idx] = { ...updated[idx], quantity_approved: e.target.value };
+                                                                            approveForm.setData('items', updated);
+                                                                        }}
+                                                                        className="h-10 bg-white border-emerald-500/20 focus:ring-emerald-500/5 focus:border-emerald-500/40 rounded-xl font-black text-emerald-700"
+                                                                    />
                                                                 </div>
                                                             </div>
-                                                            <div className="space-y-1.5 min-w-[120px]">
-                                                                <Label className="text-[9px] font-black uppercase text-emerald-600 tracking-widest">Approve</Label>
-                                                                <Input
-                                                                    type="number"
-                                                                    min="0"
-                                                                    value={line.quantity_approved}
-                                                                    onChange={(e) => {
-                                                                        const updated = [...approveForm.data.items];
-                                                                        updated[idx] = { ...updated[idx], quantity_approved: e.target.value };
-                                                                        approveForm.setData('items', updated);
-                                                                    }}
-                                                                    className="h-10 bg-white border-emerald-500/20 focus:ring-emerald-500/5 focus:border-emerald-500/40 rounded-xl font-black text-emerald-700"
-                                                                />
-                                                            </div>
                                                             {isPurchase && (
-                                                                <div className="space-y-1.5 col-span-2 sm:min-w-[140px]">
+                                                                <div className="space-y-1.5 w-full sm:min-w-[140px]">
                                                                     <Label className="text-[9px] font-black uppercase text-text-muted tracking-widest">Est. Unit Cost (₦)</Label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-text-muted">₦</span>
@@ -464,31 +480,57 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                     </div>
 
                                     {/* Mobile Card View */}
-                                    <div className="lg:hidden p-4 flex flex-col gap-4">
-                                        <div className="flex items-start justify-between">
+                                    <div className="lg:hidden p-5 flex flex-col gap-4">
+                                        <div className="flex items-start justify-between gap-4">
                                             <div className="flex items-center gap-3">
                                                 <div className="h-10 w-10 rounded-xl bg-muted/40 flex items-center justify-center shrink-0">
                                                     <Package className="h-5 w-5 text-text-muted" />
                                                 </div>
                                                 <div>
-                                                    <p className="text-sm font-bold text-text-primary">{item.product?.name ?? '—'}</p>
-                                                    <p className="text-[10px] text-text-muted font-mono">{item.product?.sku}</p>
+                                                    <p className="text-sm font-bold text-text-primary leading-tight">{item.product?.name ?? '—'}</p>
+                                                    <p className="text-[10px] text-text-muted font-mono mt-0.5">{item.product?.sku}</p>
                                                 </div>
                                             </div>
-                                            <Badge variant="outline" className="text-[9px] font-black uppercase">{requisition.status}</Badge>
+                                            <Badge variant="outline" className={cn(
+                                                "text-[9px] font-black uppercase border-transparent px-2 shadow-sm shrink-0",
+                                                requisition.status === 'completed' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'
+                                            )}>
+                                                {requisition.status === 'approved' ? 'Confirmed' : requisition.status}
+                                            </Badge>
                                         </div>
-                                        <div className="grid grid-cols-3 gap-2 py-3 border-y border-border/30">
-                                            <div className="text-center border-r border-border/30">
-                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Req.</p>
-                                                <p className="text-xs font-bold text-text-primary">{item.quantity_requested}</p>
-                                            </div>
-                                            <div className="text-center border-r border-border/30">
-                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">On Hand</p>
-                                                <p className="text-xs font-bold text-brand">{item.quantity_on_hand}</p>
-                                            </div>
+                                        
+                                        <div className="grid grid-cols-3 gap-3 p-3 bg-muted/20 rounded-2xl border border-border/30">
                                             <div className="text-center">
-                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Appr.</p>
-                                                <p className="text-xs font-bold text-emerald-600">{item.quantity_approved || '—'}</p>
+                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Req.</p>
+                                                <p className="text-sm font-black text-text-primary">{item.quantity_requested}</p>
+                                                <p className="text-[9px] font-bold text-text-muted uppercase tracking-tighter">{item.product?.unit_of_measure?.abbreviation}</p>
+                                            </div>
+                                            
+                                            {(isInternal || isDepartmental) ? (
+                                                <div className="text-center border-x border-border/30 px-2">
+                                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">On Hand</p>
+                                                    <Badge variant="outline" className={cn(
+                                                        "font-black text-[10px] uppercase px-2 py-0 shadow-sm border-transparent",
+                                                        item.quantity_on_hand > item.quantity_requested ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                                                    )}>
+                                                        {item.quantity_on_hand}
+                                                    </Badge>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center border-x border-border/30 px-2">
+                                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Cost</p>
+                                                    <p className="text-xs font-bold text-text-primary">₦{item.estimated_unit_cost || '0'}</p>
+                                                </div>
+                                            )}
+                                            
+                                            <div className="text-center">
+                                                <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Approved</p>
+                                                <p className={cn(
+                                                    "text-sm font-black",
+                                                    item.quantity_approved > 0 ? 'text-blue-600' : 'text-text-muted/30 italic'
+                                                )}>
+                                                    {item.quantity_approved || '—'}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
@@ -709,7 +751,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                 variant="ghost"
                                 size="sm"
                                 className="w-full text-text-muted hover:text-rose-600 hover:bg-rose-50 text-[10px] font-black uppercase tracking-widest gap-2 h-10 rounded-xl transition-all"
-                                onClick={handleCancel}
+                                 onClick={() => setIsCancelDialogOpen(true)}
                             >
                                 <XCircle className="h-4 w-4" /> Cancel Requisition
                             </Button>
@@ -828,6 +870,45 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                 isOpen={isIssueDialogOpen}
                 onClose={() => setIsIssueDialogOpen(false)}
                 requisition={requisition}
+            />
+
+            {/* Cancel Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isCancelDialogOpen}
+                onClose={() => setIsCancelDialogOpen(false)}
+                onConfirm={handleCancel}
+                title="Cancel Requisition?"
+                description={
+                    <div className="space-y-3">
+                        <p className="text-sm text-text-secondary">Are you sure you want to cancel requisition <span className="font-bold text-text-primary">{requisition.reference}</span>?</p>
+                        <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 flex gap-2 items-start">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <p>This action cannot be undone. The requisition will be permanently marked as cancelled.</p>
+                        </div>
+                    </div>
+                }
+                confirmText={actionProcessing ? 'Cancelling...' : 'Yes, Cancel Requisition'}
+                variant="destructive"
+                isLoading={actionProcessing}
+            />
+
+            {/* Receive Confirmation Dialog */}
+            <ConfirmationDialog
+                isOpen={isReceiveDialogOpen}
+                onClose={() => setIsReceiveDialogOpen(false)}
+                onConfirm={handleReceive}
+                title="Confirm Receipt of Items?"
+                description={
+                    <div className="space-y-3">
+                        <p className="text-sm text-text-secondary">Confirm that you have received all items for requisition <span className="font-bold text-text-primary">{requisition.reference}</span>.</p>
+                        <div className="p-3 bg-brand/5 border border-brand/20 rounded-xl text-xs text-brand flex gap-2 items-start">
+                            <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                            <p>This will update your store/department inventory and mark the requisition as completed.</p>
+                        </div>
+                    </div>
+                }
+                confirmText={actionProcessing ? 'Processing...' : 'Confirm Receipt'}
+                isLoading={actionProcessing}
             />
         </div>
     );

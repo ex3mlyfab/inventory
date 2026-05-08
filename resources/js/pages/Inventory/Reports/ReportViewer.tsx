@@ -215,8 +215,17 @@ export default function ReportViewer({ reportData, type, filters, categories, lo
                         <div className="flex items-center gap-2">
                             <CalendarIcon className="h-4 w-4 text-slate-400 shrink-0" />
                             <Select 
-                                value={filters.period || 'all'} 
-                                onValueChange={(val) => handleFilterChange('period', val === 'all' ? '' : val)}
+                                value={(filters.start_date && filters.end_date) ? 'custom' : (filters.period || 'all')} 
+                                onValueChange={(val) => {
+                                    if (val === 'custom') {
+                                        const today = new Date().toISOString().split('T')[0];
+                                        const newFilters = { ...filters, start_date: today, end_date: today };
+                                        delete newFilters.period;
+                                        router.get('/reports/viewer', newFilters, { preserveState: true, replace: true });
+                                    } else {
+                                        handleFilterChange('period', val === 'all' ? '' : val);
+                                    }
+                                }}
                             >
                                 <SelectTrigger className="h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs uppercase tracking-widest">
                                     <SelectValue placeholder="Time Period" />
@@ -228,9 +237,33 @@ export default function ReportViewer({ reportData, type, filters, categories, lo
                                     <SelectItem value="monthly">This Month</SelectItem>
                                     <SelectItem value="last_month">Last Month</SelectItem>
                                     <SelectItem value="yearly">This Year</SelectItem>
+                                    <SelectItem value="custom">Custom Range</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {(filters.start_date || filters.end_date) && (
+                            <>
+                                <div className="relative">
+                                    <label className="absolute -top-2 left-3 bg-white px-1 text-[9px] font-black uppercase tracking-widest text-slate-400 z-10">From</label>
+                                    <Input
+                                        type="date"
+                                        className="h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs"
+                                        value={filters.start_date || ''}
+                                        onChange={(e) => handleFilterChange('start_date', e.target.value)}
+                                    />
+                                </div>
+                                <div className="relative">
+                                    <label className="absolute -top-2 left-3 bg-white px-1 text-[9px] font-black uppercase tracking-widest text-slate-400 z-10">To</label>
+                                    <Input
+                                        type="date"
+                                        className="h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs"
+                                        value={filters.end_date || ''}
+                                        onChange={(e) => handleFilterChange('end_date', e.target.value)}
+                                    />
+                                </div>
+                            </>
+                        )}
 
                         {type === 'products' && (
                             <div className="flex items-center gap-2">

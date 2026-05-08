@@ -151,20 +151,20 @@ export default function ProductShow({ product, recentMovements, chartData }: Pro
                             )}
                         </div>
                         <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-3">
-                                <h1 className="text-3xl font-black text-text-primary tracking-tight uppercase">{product.name}</h1>
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                                <h1 className="text-2xl sm:text-3xl font-black text-text-primary tracking-tight uppercase">{product.name}</h1>
                                 <StockLevelIndicator 
                                     currentStock={product.quantity_on_hand || 0} 
                                     reorderLevel={product.reorder_level} 
                                 />
                             </div>
-                            <div className="flex items-center gap-3 text-sm text-text-muted font-medium">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-sm text-text-muted font-medium">
                                 <span className="px-2 py-0.5 bg-surface-highest rounded border border-border text-[10px] font-bold uppercase tracking-wider">
                                     SKU: {product.sku}
                                 </span>
-                                <span>•</span>
+                                <span className="hidden sm:inline">•</span>
                                 <span className="text-brand font-bold">{product.category?.name}</span>
-                                <span>•</span>
+                                <span className="hidden sm:inline">•</span>
                                 <span>{product.unit_of_measure?.name} ({product.unit_of_measure?.abbreviation})</span>
                             </div>
                         </div>

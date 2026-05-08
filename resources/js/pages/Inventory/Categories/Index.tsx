@@ -38,7 +38,7 @@ export default function CategoriesIndex({ categories }: Props) {
         is_active: true
     });
 
-    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors: clearDeleteErrors } = useForm({});
+    const { delete: destroy, processing: deleting, errors: deleteErrors, clearErrors: clearDeleteErrors } = useForm<{ error?: string }>({});
 
     const handleOpenChange = (open: boolean) => {
         setIsDialogOpen(open);

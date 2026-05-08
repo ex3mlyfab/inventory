@@ -131,6 +131,7 @@ class RequisitionController extends Controller
             'pending_l1'     => (clone $base)->where('status', 'submitted')->count(),
             'pending_l2'     => (clone $base)->where('status', 'level1_approved')->count(),
             'internal'       => (clone $base)->where('type', 'internal')->count(),
+            'departmental'   => (clone $base)->where('type', 'departmental')->count(),
             'purchase'       => (clone $base)->where('type', 'purchase')->count(),
         ];
 

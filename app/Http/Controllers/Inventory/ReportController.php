@@ -303,9 +303,13 @@ class ReportController extends Controller
                 $q->where('status', 'active');
             }], 'quantity_on_hand');
 
+        $query = $this->applyDateFilters($query, $filters);
+
         if (!empty($filters['search'])) {
-            $query->where('name', 'like', "%{$filters['search']}%")
+            $query->where(function ($q) use ($filters) {
+                $q->where('name', 'like', "%{$filters['search']}%")
                   ->orWhere('sku', 'like', "%{$filters['search']}%");
+            });
         }
 
         if (!empty($filters['category_id'])) {
@@ -337,17 +341,17 @@ class ReportController extends Controller
             ->join('stock_batches', 'stock_movements.stock_batch_id', '=', 'stock_batches.id')
             ->join('products', 'stock_batches.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
-            ->join('unit_of_measures', 'products.unit_of_measure_id', '=', 'unit_of_measures.id')
+            ->join('units_of_measure', 'products.unit_of_measure_id', '=', 'units_of_measure.id')
             ->where('stock_movements.type', 'out')
             ->select(
                 'products.id',
                 'products.name',
                 'products.sku',
                 'categories.name as category_name',
-                'unit_of_measures.abbreviation as uom_name',
+                'units_of_measure.abbreviation as uom_name',
                 DB::raw('SUM(stock_movements.quantity) as total_consumed')
             )
-            ->groupBy('products.id', 'products.name', 'products.sku', 'categories.name', 'unit_of_measures.abbreviation');
+            ->groupBy('products.id', 'products.name', 'products.sku', 'categories.name', 'units_of_measure.abbreviation');
 
         if (!empty($filters['period']) || (!empty($filters['start_date']) && !empty($filters['end_date']))) {
             $this->applyDateFilters($query, $filters, 'stock_movements.created_at');
@@ -365,6 +369,8 @@ class ReportController extends Controller
         $query = StockBatch::with(['product', 'storageLocation.department'])
             ->where('quantity_on_hand', '>', 0)
             ->where('status', 'active');
+
+        $query = $this->applyDateFilters($query, $filters);
 
         if (!empty($filters['location_id'])) {
             $query->where('storage_location_id', $filters['location_id']);

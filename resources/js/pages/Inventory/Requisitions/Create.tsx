@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, useHttp } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,8 +11,9 @@ import { Combobox } from '@/components/ui/combobox';
 import {
     ArrowLeft, Save, Plus, Trash2, ArrowRightLeft,
     ShoppingCart, AlertCircle, BadgeCheck,
-    Package, ClipboardList, Hash, Building2
+    Package, ClipboardList, Hash, Building2, Loader2
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,6 @@ interface LineItem {
     quantity_requested: string;
     quantity_on_hand: string;
     estimated_unit_cost: string;
-    notes: string;
     available_stock?: number;
 }
 
@@ -49,10 +49,11 @@ const CARD_HEADER_CLS = 'px-6 py-4 bg-muted/30 border-b border-border/50 flex it
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function RequisitionCreate({ type, stores, departmentalStores, products, suppliers, departments, defaultRef, user }: Props) {
-    const isInternal     = type === 'internal';
+    const isInternal = type === 'internal';
     const isDepartmental = type === 'departmental';
-    const isPurchase     = type === 'purchase';
+    const isPurchase = type === 'purchase';
 
+    const http = useHttp();
     const { data, setData, post, processing, errors } = useForm<{
         type: RequisitionType;
         reference: string;
@@ -74,7 +75,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         purpose: '',
         required_by: '',
         notes: '',
-        items: [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', notes: '', available_stock: undefined }],
+        items: [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }],
     });
 
     // ── Memoized Options ─────────────────────────────────────────────────
@@ -100,7 +101,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     })), [suppliers]);
 
     const addItem = () =>
-        setData('items', [...data.items, { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', notes: '', available_stock: undefined }]);
+        setData('items', [...data.items, { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
 
     const removeItem = (i: number) =>
         setData('items', data.items.filter((_, idx) => idx !== i));
@@ -110,34 +111,57 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         updated[i] = { ...updated[i], [field]: value };
         setData('items', updated);
 
-        if (field === 'product_id' && value && data.issuing_location_id) {
+        const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
+        if (field === 'product_id' && value && locationId) {
             checkStock(i, value);
         }
     };
 
-    const checkStock = async (index: number, productId: string) => {
-        if (!productId || !data.issuing_location_id) return;
-        try {
-            // @ts-ignore
-            const res = await window.axios.get('/procurement/requisitions/check-stock', {
-                params: { product_id: productId, location_id: data.issuing_location_id }
-            });
-            const updated = [...data.items];
-            updated[index] = { ...updated[index], available_stock: res.data.available };
-            setData('items', updated);
-        } catch (e) {
-            console.error('Failed to check stock', e);
-        }
+    const checkStock = (index: number, productId: string, locationOverride?: string) => {
+        const locationId = locationOverride || (isPurchase ? data.requesting_location_id : data.issuing_location_id);
+        if (!productId || !locationId) return;
+
+        const params = new URLSearchParams({ 
+            product_id: productId, 
+            location_id: locationId 
+        }).toString();
+
+        http.get(`/procurement/requisitions/check-stock?${params}`, {
+            onSuccess: (res: any) => {
+                // Defensively extract available stock from varying response shapes
+                const available = res?.available ?? res?.data?.available ?? 0;
+                setData((prev) => {
+                    const items = [...prev.items];
+                    if (items[index]) {
+                        items[index] = { ...items[index], available_stock: Number(available) };
+                    }
+                    return { ...prev, items };
+                });
+            },
+            onError: (e) => {
+                console.error('Failed to check stock', e);
+                // Set stock to undefined on error so UI shows "No store selected" instead of stale data
+                setData((prev) => {
+                    const items = [...prev.items];
+                    if (items[index]) {
+                        items[index] = { ...items[index], available_stock: undefined };
+                    }
+                    return { ...prev, items };
+                });
+            }
+        });
     };
 
-    // Re-check all items if issuing store changes
+    // Re-check all items if location changes — pass locationId explicitly to avoid stale closures
     React.useEffect(() => {
-        if (data.issuing_location_id) {
+        const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
+        if (locationId) {
             data.items.forEach((item, i) => {
-                if (item.product_id) checkStock(i, item.product_id);
+                if (item.product_id) checkStock(i, item.product_id, locationId);
             });
         }
-    }, [data.issuing_location_id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [data.issuing_location_id, data.requesting_location_id]);
 
     const totalEstimated = data.items.reduce(
         (sum, row) => sum + (Number(row.quantity_requested) * Number(row.estimated_unit_cost || 0)),
@@ -149,69 +173,90 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         post('/procurement/requisitions');
     };
 
+    const pageTitle = isInternal ? 'New Internal Transfer' : isDepartmental ? 'New Departmental Request' : 'New Purchase Request';
 
     return (
-        <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8">
-            <Head title={`New ${isInternal ? 'Internal Transfer' : 'Purchase Request'}`} />
+        <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 animate-in fade-in duration-700">
+            <Head title={pageTitle} />
 
             <div className="flex flex-col gap-4">
-                <Link href="/procurement/requisitions" className="flex items-center text-sm text-text-muted hover:text-brand transition-colors w-fit">
-                    <ArrowLeft className="mr-2 h-4 w-4" />
-                    Back to Requisitions
+                <Link href="/procurement/requisitions" className="flex items-center text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-brand transition-colors w-fit group">
+                    <ArrowLeft className="mr-2 h-3.5 w-3.5 group-hover:-translate-x-1 transition-transform" />
+                    Back to Register
                 </Link>
 
                 {/* Type switcher banner */}
-                <div className={`flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border ${
-                    isInternal ? 'bg-brand/5 border-brand/20' : 'bg-amber-50 border-amber-200'
-                }`}>
-                    <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${
-                        isInternal ? 'bg-brand/10' : isDepartmental ? 'bg-blue-100' : 'bg-amber-100'
-                    }`}>
-                        {isInternal ? <ArrowRightLeft className="h-6 w-6 text-brand" /> :
-                         isDepartmental ? <Building2 className="h-6 w-6 text-blue-700" /> :
-                         <ShoppingCart className="h-6 w-6 text-amber-700" />
+                <div className={cn(
+                    "flex flex-col sm:flex-row items-start sm:items-center gap-5 p-5 rounded-3xl border-2 border-dashed transition-all duration-500",
+                    isInternal ? 'bg-brand/[0.03] border-brand/20 shadow-lg shadow-brand/5' :
+                        isDepartmental ? 'bg-blue-500/[0.03] border-blue-500/20 shadow-lg shadow-blue-500/5' :
+                            'bg-amber-500/[0.03] border-amber-500/20 shadow-lg shadow-amber-500/5'
+                )}>
+                    <div className={cn(
+                        "h-14 w-14 rounded-2xl flex items-center justify-center shrink-0 shadow-sm transition-transform hover:scale-110 duration-300",
+                        isInternal ? 'bg-brand/10 text-brand' :
+                            isDepartmental ? 'bg-blue-500/10 text-blue-600' :
+                                'bg-amber-500/10 text-amber-600'
+                    )}>
+                        {isInternal ? <ArrowRightLeft className="h-7 w-7" /> :
+                            isDepartmental ? <Building2 className="h-7 w-7" /> :
+                                <ShoppingCart className="h-7 w-7" />
                         }
                     </div>
-                    <div className="flex-1">
-                        <p className={`font-bold text-sm ${isInternal ? 'text-brand' : isDepartmental ? 'text-blue-800' : 'text-amber-800'}`}>
-                            {isInternal ? 'Internal Transfer Requisition' : 
-                             isDepartmental ? 'Departmental Requisition' : 
-                             'Purchase Requisition'}
+                    <div className="flex-1 min-w-0">
+                        <p className={cn(
+                            "font-black text-[11px] uppercase tracking-[0.2em] mb-1",
+                            isInternal ? 'text-brand' : isDepartmental ? 'text-blue-600' : 'text-amber-600'
+                        )}>
+                            {isInternal ? 'Internal Transfer' :
+                                isDepartmental ? 'Departmental Issue' :
+                                    'Direct Purchase'}
                         </p>
-                        <p className={`text-xs mt-0.5 ${isInternal ? 'text-brand/70' : isDepartmental ? 'text-blue-700/70' : 'text-amber-700'}`}>
-                            {isInternal ? 'Request stock movement between two stores.' :
-                             isDepartmental ? 'Request stock issue from a store to your department.' :
-                             'Request procurement of goods from an external supplier.'
+                        <h2 className="text-lg font-extrabold text-text-primary tracking-tight">
+                            {isInternal ? 'Store-to-Store Movement' :
+                                isDepartmental ? 'Unit Supply Request' :
+                                    'External Procurement'}
+                        </h2>
+                        <p className="text-xs font-medium text-text-muted mt-1 leading-relaxed">
+                            {isInternal ? 'Relocate stock between inventory locations within the facility.' :
+                                isDepartmental ? 'Request consumable items from central stores to your department.' :
+                                    'Order new stock or services from verified external vendors.'
                             }
                         </p>
                     </div>
                     {/* Type switcher links */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 items-center w-full sm:w-auto">
+                    <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto pt-2 sm:pt-0">
                         {user.role !== 'Ward/Dept Head' && (
                             <>
                                 {!isInternal && (
-                                    <Link href="/procurement/requisitions/create?type=internal" className="text-xs font-bold underline text-brand whitespace-nowrap">
-                                        Switch to Internal
+                                    <Link href="/procurement/requisitions/create?type=internal">
+                                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border-brand/20 text-brand hover:bg-brand/5 px-4">Switch to Internal</Button>
                                     </Link>
                                 )}
                                 {!isPurchase && (
-                                    <Link href="/procurement/requisitions/create?type=purchase" className="text-xs font-bold underline text-amber-800 whitespace-nowrap">
-                                        Switch to Purchase
+                                    <Link href="/procurement/requisitions/create?type=purchase">
+                                        <Button variant="outline" size="sm" className="h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border-amber-500/20 text-amber-700 hover:bg-amber-500/5 px-4">Switch to Purchase</Button>
                                     </Link>
                                 )}
                             </>
                         )}
                         {!isDepartmental && (
-                            <Link href="/procurement/requisitions/create?type=departmental" className="text-xs font-bold underline text-blue-800 whitespace-nowrap">
-                                Switch to Departmental
+                            <Link href="/procurement/requisitions/create?type=departmental">
+                                <Button variant="outline" size="sm" className="h-9 rounded-xl text-[10px] font-bold uppercase tracking-wider border-blue-500/20 text-blue-700 hover:bg-blue-500/5 px-4">Switch to Departmental</Button>
                             </Link>
                         )}
                     </div>
                 </div>
 
                 <PageHeader
-                    title={isInternal ? 'New Internal Transfer Request' : 'New Purchase Request'}
-                    description={`Reference: ${data.reference}`}
+                    title={pageTitle}
+                    description={
+                        <div className="flex items-center gap-2 mt-1">
+                            <Hash className="h-3.5 w-3.5 text-brand" />
+                            <span className="text-xs font-mono font-bold text-text-muted uppercase tracking-tighter">REF: {data.reference}</span>
+                        </div>
+                    }
+                    className="pb-2"
                 />
             </div>
 
@@ -219,10 +264,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                 <div className="lg:col-span-2 space-y-8">
 
                     {/* ── Requisition Meta ─────────────────────────────── */}
-                    <Card className="border-border/50 shadow-sm overflow-hidden">
+                    <Card className="border-border/50 shadow-xl shadow-brand/5 overflow-hidden rounded-3xl">
                         <div className={CARD_HEADER_CLS}>
-                            <Hash className="h-4 w-4 text-brand" />
-                            <h3 className="text-sm font-bold uppercase tracking-wider">Requisition Details</h3>
+                            <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center">
+                                <Hash className="h-4 w-4 text-brand" />
+                            </div>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-text-primary">Submission Metadata</h3>
                         </div>
                         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
@@ -266,14 +313,19 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                     </Card>
 
                     {/* ── Route (Internal) or Supplier (Purchase) ──────── */}
-                    <Card className="border-border/50 shadow-sm overflow-hidden">
+                    <Card className="border-border/50 shadow-xl shadow-brand/5 overflow-hidden rounded-3xl">
                         <div className={CARD_HEADER_CLS}>
-                            {isInternal ? <ArrowRightLeft className="h-4 w-4 text-brand" /> :
-                             isDepartmental ? <Building2 className="h-4 w-4 text-blue-600" /> :
-                             <ShoppingCart className="h-4 w-4 text-amber-600" />
-                            }
-                            <h3 className="text-sm font-bold uppercase tracking-wider">
-                                {isInternal ? 'Store Route' : isDepartmental ? 'Department Target' : 'Supplier Info'}
+                            <div className={cn(
+                                "h-8 w-8 rounded-lg flex items-center justify-center",
+                                isInternal ? 'bg-brand/10 text-brand' : isDepartmental ? 'bg-blue-500/10 text-blue-600' : 'bg-amber-500/10 text-amber-600'
+                            )}>
+                                {isInternal ? <ArrowRightLeft className="h-4 w-4" /> :
+                                    isDepartmental ? <Building2 className="h-4 w-4" /> :
+                                        <ShoppingCart className="h-4 w-4" />
+                                }
+                            </div>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-text-primary">
+                                {isInternal ? 'Logistics Route' : isDepartmental ? 'Target Allocation' : 'Supplier Designation'}
                             </h3>
                         </div>
                         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -325,39 +377,54 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                     </div>
                                 </>
                             ) : (
-                                <div className="md:col-span-2 space-y-2">
-                                    <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                                        Preferred Supplier
-                                        <span className="ml-2 text-[10px] normal-case font-normal italic text-text-muted">(optional — procurement team can override)</span>
-                                    </Label>
-                                    <Combobox
-                                        options={supplierOptions}
-                                        value={data.supplier_id}
-                                        onChange={(val) => setData('supplier_id', val)}
-                                        placeholder="No preference"
-                                        className="bg-muted/30 border-none"
-                                    />
-                                    <InputError message={(errors as any).supplier_id} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">Target Store (Receiving) <span className="text-brand">*</span></Label>
+                                        <Combobox
+                                            options={storeOptions}
+                                            value={data.requesting_location_id}
+                                            onChange={(val) => setData('requesting_location_id', val)}
+                                            placeholder="Select store to restock…"
+                                            className="bg-muted/30 border-none"
+                                        />
+                                        <InputError message={errors.requesting_location_id} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">Preferred Supplier (Optional)</Label>
+                                        <Combobox
+                                            options={supplierOptions}
+                                            value={data.supplier_id}
+                                            onChange={(val) => setData('supplier_id', val)}
+                                            placeholder="No preference"
+                                            className="bg-muted/30 border-none"
+                                        />
+                                        <InputError message={(errors as any).supplier_id} />
+                                    </div>
                                 </div>
                             )}
                         </CardContent>
                     </Card>
 
                     {/* ── Line Items ───────────────────────────────────── */}
-                    <Card className="border-border/50 shadow-sm overflow-hidden">
+                    <Card className="border-border/50 shadow-xl shadow-brand/5 overflow-hidden rounded-3xl bg-white">
                         <div className={CARD_HEADER_CLS}>
-                            <Package className="h-4 w-4 text-brand" />
-                            <h3 className="text-sm font-bold uppercase tracking-wider">Requested Items</h3>
+                            <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center text-brand">
+                                <Package className="h-4 w-4" />
+                            </div>
+                            <h3 className="text-[10px] font-black uppercase tracking-widest text-text-primary">Requested Line Items</h3>
                         </div>
                         <CardContent className="p-6 space-y-4">
                             {/* Column headers */}
                             <div className="hidden md:grid grid-cols-12 gap-3 text-[10px] font-bold uppercase tracking-widest text-text-muted px-1">
-                                <div className="col-span-4">Product</div>
-                                <div className="col-span-2 text-center">Available</div>
-                                <div className="col-span-1 text-center">Qty Required</div>
-                                {(isInternal || isDepartmental) && <div className="col-span-1 text-center">In Dept</div>}
-                                {!isInternal && !isDepartmental && <div className="col-span-2 text-center">Est. Unit Cost (₦)</div>}
-                                <div className="col-span-3">Notes</div>
+                                <div className={cn(
+                                    isPurchase ? "col-span-5" : 
+                                    isDepartmental ? "col-span-7" : 
+                                    "col-span-5"
+                                )}>Product</div>
+                                {(isInternal || isPurchase) && <div className="col-span-2 text-center">Available</div>}
+                                <div className="col-span-2 text-center">Qty Required</div>
+                                {(isInternal || isDepartmental) && <div className="col-span-2 text-center">Avail Qty</div>}
+                                {isPurchase && <div className="col-span-2 text-center">Est. Unit Cost (₦)</div>}
                                 <div className="col-span-1" />
                             </div>
 
@@ -374,7 +441,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                         </button>
                                     )}
 
-                                    <div className="md:col-span-4 w-full">
+                                    <div className={cn(
+                                        "w-full", 
+                                        isPurchase ? "md:col-span-5" : 
+                                        isDepartmental ? "md:col-span-7" : 
+                                        "md:col-span-5"
+                                    )}>
                                         <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Product</Label>
                                         <Combobox
                                             options={productOptions}
@@ -388,19 +460,21 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                         )}
                                     </div>
 
-                                    <div className="md:col-span-2 flex flex-col items-start md:items-center justify-center md:pt-2 w-full">
-                                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Stock Status</Label>
-                                        {item.available_stock !== undefined ? (
-                                            <span className={`text-xs font-bold ${item.available_stock === 0 ? 'text-destructive' : 'text-emerald-600'}`}>
-                                                {item.available_stock} available
-                                            </span>
-                                        ) : (
-                                            <span className="text-[10px] text-text-muted italic">No store selected</span>
-                                        )}
-                                    </div>
+                                    {(isInternal || isPurchase) && (
+                                        <div className="md:col-span-2 flex flex-col items-start md:items-center justify-center md:pt-2 w-full">
+                                            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Stock Status</Label>
+                                            {item.available_stock !== undefined ? (
+                                                <span className={`text-xs font-bold ${item.available_stock === 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+                                                    {item.available_stock}
+                                                </span>
+                                            ) : (
+                                                <span className="text-[10px] text-text-muted italic">No store selected</span>
+                                            )}
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-2 md:contents gap-4 w-full">
-                                        <div className="md:col-span-1">
+                                        <div className="md:col-span-2">
                                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Qty Req</Label>
                                             <Input
                                                 type="number"
@@ -408,20 +482,19 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                                 value={item.quantity_requested}
                                                 onChange={(e) => updateItem(i, 'quantity_requested', e.target.value)}
                                                 placeholder="0"
-                                                className={`bg-muted/30 border-none focus-visible:ring-brand/20 text-center ${
-                                                    item.available_stock !== undefined && Number(item.quantity_requested) > item.available_stock
+                                                className={`bg-muted/30 border-none focus-visible:ring-brand/20 text-center ${item.available_stock !== undefined && isInternal && Number(item.quantity_requested) > item.available_stock
                                                         ? 'text-destructive font-bold ring-1 ring-destructive/50'
                                                         : ''
-                                                }`}
+                                                    }`}
                                             />
-                                            {item.available_stock !== undefined && Number(item.quantity_requested) > item.available_stock && (
+                                            {item.available_stock !== undefined && isInternal && Number(item.quantity_requested) > item.available_stock && (
                                                 <p className="text-[9px] text-destructive mt-1 text-center font-bold animate-pulse">Exceeds Stock</p>
                                             )}
                                         </div>
 
                                         {(isInternal || isDepartmental) ? (
-                                            <div className="md:col-span-1">
-                                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">In Dept</Label>
+                                            <div className="md:col-span-2">
+                                                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Avail Qty</Label>
                                                 <Input
                                                     type="number"
                                                     min="0"
@@ -447,15 +520,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                         )}
                                     </div>
 
-                                    <div className="md:col-span-3 w-full">
-                                        <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Notes</Label>
-                                        <Input
-                                            value={item.notes}
-                                            onChange={(e) => updateItem(i, 'notes', e.target.value)}
-                                            placeholder="Line notes…"
-                                            className="bg-muted/30 border-none focus-visible:ring-brand/20"
-                                        />
-                                    </div>
+
 
                                     <div className="hidden md:flex md:col-span-1 justify-end pt-1">
                                         {data.items.length > 1 && (
@@ -476,9 +541,9 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 variant="outline"
                                 size="sm"
                                 onClick={addItem}
-                                className="mt-2 border-dashed border-brand/30 text-brand hover:bg-brand/5"
+                                className="mt-4 border-2 border-dashed border-brand/20 text-brand hover:bg-brand/5 h-11 rounded-xl font-bold text-[11px] uppercase tracking-wider w-full md:w-auto"
                             >
-                                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                                <Plus className="h-4 w-4 mr-2" />
                                 Add Another Item
                             </Button>
                             {(errors as any).items && (
@@ -522,11 +587,13 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                         </Card>
                     )}
 
-                    <Card className="border-border/50 shadow-sm">
-                        <CardContent className="p-6 space-y-4">
+                    <Card className="border-border/50 shadow-xl shadow-brand/5 overflow-hidden rounded-3xl bg-white sticky top-8">
+                        <CardContent className="p-6 space-y-6">
                             <div className="flex items-center gap-3 text-brand">
-                                <BadgeCheck className="h-5 w-5" />
-                                <span className="text-xs font-bold uppercase tracking-widest">Submit Requisition</span>
+                                <div className="h-10 w-10 rounded-xl bg-brand/10 flex items-center justify-center">
+                                    <BadgeCheck className="h-6 w-6" />
+                                </div>
+                                <span className="text-xs font-black uppercase tracking-widest">Finalize Submission</span>
                             </div>
 
                             <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-800 flex gap-2 items-start">
@@ -548,21 +615,21 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 />
                             </div>
 
-                            <div className="flex flex-col gap-2 pt-1">
+                            <div className="flex flex-col gap-3 pt-2">
                                 <Button
-                                    className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-lg h-11"
+                                    className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-lg shadow-brand/20 h-12 rounded-xl font-black uppercase tracking-widest text-[10px]"
                                     disabled={processing}
                                 >
-                                    <Save className="w-4 h-4 mr-2" />
-                                    {processing ? 'Submitting…' : 'Submit Requisition'}
+                                    {processing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+                                    {processing ? 'Processing...' : 'Submit Requisition'}
                                 </Button>
                                 <Button
                                     type="button"
                                     variant="ghost"
-                                    className="w-full text-text-muted"
+                                    className="w-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:bg-muted/50 h-10 rounded-xl"
                                     onClick={() => window.history.back()}
                                 >
-                                    Cancel
+                                    Discard Changes
                                 </Button>
                             </div>
                         </CardContent>

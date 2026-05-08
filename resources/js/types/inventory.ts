@@ -137,7 +137,7 @@ export interface StockAdjustment {
 }
 
 export type SupplierCategory = 'pharmaceutical' | 'medical_equipment' | 'surgical_supply' | 'laboratory' | 'general';
-export type SupplierStatus = 'active' | 'on_hold' | 'inactive' | 'blacklisted';
+export type SupplierStatus = 'active' | 'on_hold' | 'inactive' | 'blacklisted' | 'suspended';
 
 export interface Supplier {
     id: string;
@@ -169,6 +169,8 @@ export type RequisitionStatus =
     | 'partially_issued'
     | 'issued'
     | 'in_transit'
+    | 'completed'
+    | 'received'
     | 'rejected'
     | 'cancelled';
 
@@ -193,6 +195,7 @@ export interface StorageLocationBasic {
     code: string;
     type: string;
     department_id?: string | null;
+    department?: { id: string; name: string } | null;
 }
 
 export interface Requisition {
@@ -235,6 +238,38 @@ export interface Requisition {
     issuing_location?: StorageLocationBasic | null;
     supplier?: Supplier | null;
     items?: RequisitionItem[];
+    created_at: string;
+    updated_at: string;
+}
+
+// ── Purchase Orders ─────────────────────────────────────────────────────
+
+export type PurchaseOrderStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
+
+export interface PurchaseOrderItem {
+    id: string;
+    purchase_order_id: string;
+    product_id: string;
+    quantity: number;
+    unit_price: number;
+    total_price?: number;
+    product?: Product;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface PurchaseOrder {
+    id: string;
+    requisition_id: string | null;
+    supplier_id: string;
+    po_number: string;
+    status: PurchaseOrderStatus;
+    notes: string | null;
+    total_amount: number;
+    approved_by: string | null;
+    supplier?: Supplier;
+    requisition?: Requisition;
+    items: PurchaseOrderItem[];
     created_at: string;
     updated_at: string;
 }

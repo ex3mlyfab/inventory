@@ -40,6 +40,7 @@ import { StatusBadge } from '@/components/shared/status-badge';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface Props {
     location: any;
@@ -356,9 +357,12 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                                     </TableCell>
                                                     <TableCell className="text-center">
                                                         <Badge variant={
-                                                            movement.type === 'receive' || movement.type === 'transfer_in' ? 'success' : 
+                                                            movement.type === 'receive' || movement.type === 'transfer_in' ? 'outline' : 
                                                             movement.type === 'adjust' ? 'secondary' : 'destructive'
-                                                        } className="rounded-full capitalize text-[10px] px-2 py-0">
+                                                        } className={cn(
+                                                            "rounded-full capitalize text-[10px] px-2 py-0",
+                                                            (movement.type === 'receive' || movement.type === 'transfer_in') && "border-emerald-200 bg-emerald-50 text-emerald-700"
+                                                        )}>
                                                             {movement.type.replace('_', ' ')}
                                                         </Badge>
                                                     </TableCell>

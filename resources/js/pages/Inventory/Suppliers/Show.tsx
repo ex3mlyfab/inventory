@@ -17,6 +17,8 @@ export default function SupplierShow({ supplier }: Props) {
         active: 'bg-success/10 text-success border-success/20',
         inactive: 'bg-muted text-text-muted border-border',
         suspended: 'bg-destructive/10 text-destructive border-destructive/20',
+        on_hold: 'bg-amber-50 text-amber-700 border-amber-200',
+        blacklisted: 'bg-rose-50 text-rose-700 border-rose-200',
     };
 
     return (

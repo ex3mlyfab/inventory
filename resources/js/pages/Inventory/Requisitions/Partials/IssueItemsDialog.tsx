@@ -139,10 +139,15 @@ export function IssueItemsDialog({ isOpen, onClose, requisition }: Props) {
     const [rows, setRows] = useState<IssuanceRow[]>([]);
     const [isLoadingBatches, setIsLoadingBatches] = useState(false);
 
-    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm<{
+        issuances: { requisition_item_id: string, stock_batch_id: string, quantity: number }[];
+        collector_name: string;
+        collector_signature: string;
+        error?: string;
+    }>({
         issuances: [] as { requisition_item_id: string, stock_batch_id: string, quantity: number }[],
         collector_name: requisition.requester?.name || '',
-        collector_signature: '' as string
+        collector_signature: '' as string,
     });
 
     useEffect(() => {

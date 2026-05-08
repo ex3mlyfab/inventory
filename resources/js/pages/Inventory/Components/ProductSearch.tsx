@@ -16,7 +16,7 @@ export function ProductSearch({ initialSearch = '', routeName, routePath, placeh
     useEffect(() => {
         const timeoutId = setTimeout(() => {
             if (search !== initialSearch) {
-                const url = routePath || (routeName ? route(routeName) : window.location.pathname);
+                const url = routePath || window.location.pathname;
                 router.get(
                     url,
                     { search: search || undefined },

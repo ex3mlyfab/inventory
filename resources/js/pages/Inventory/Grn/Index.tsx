@@ -287,7 +287,9 @@ export default function GrnIndex({ batches, suppliers, filters }: Props) {
                             const isPrev = link.label.includes('Previous');
                             const isNext = link.label.includes('Next');
 
-                            let label = link.label;
+                            let label = link.label
+                                .replace(/&laquo;/g, '«')
+                                .replace(/&raquo;/g, '»');
                             if (isPrev) label = '←';
                             if (isNext) label = '→';
 
@@ -297,7 +299,7 @@ export default function GrnIndex({ batches, suppliers, filters }: Props) {
                                         key={index}
                                         className="h-9 min-w-[36px] flex items-center justify-center rounded-xl border border-border/30 text-[10px] font-black uppercase tracking-wider text-text-muted bg-muted/20 cursor-not-allowed opacity-50"
                                     >
-                                        <span dangerouslySetInnerHTML={{ __html: label }} />
+                                        {label}
                                     </div>
                                 );
                             }
@@ -313,7 +315,7 @@ export default function GrnIndex({ batches, suppliers, filters }: Props) {
                                             : 'bg-white text-text-primary border border-border/50 hover:bg-brand/5 hover:border-brand/30'
                                     )}
                                 >
-                                    <span dangerouslySetInnerHTML={{ __html: label }} />
+                                    {label}
                                 </Link>
                             );
                         })}
