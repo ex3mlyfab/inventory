@@ -285,28 +285,47 @@ export default function ReportViewer({ reportData, type, filters, categories, lo
                             </div>
                         )}
 
-                        {type === 'stores' && (
-                            <div className="flex items-center gap-2">
-                                <Store className="h-4 w-4 text-slate-400 shrink-0" />
-                                <Select 
-                                    value={filters.location_id || 'all'} 
-                                    onValueChange={(val) => handleFilterChange('location_id', val === 'all' ? '' : val)}
-                                >
-                                    <SelectTrigger className="h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs uppercase tracking-widest">
-                                        <SelectValue placeholder="All Locations" />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl">
-                                        <SelectItem value="all">All Locations</SelectItem>
-                                        {locations.map(loc => (
-                                            <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        {(type === 'consumption' || type === 'stores') && (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <Store className="h-4 w-4 text-slate-400 shrink-0" />
+                                    <Select 
+                                        value={filters.department_id || 'all'} 
+                                        onValueChange={(val) => handleFilterChange('department_id', val === 'all' ? '' : val)}
+                                    >
+                                        <SelectTrigger className="h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs uppercase tracking-widest">
+                                            <SelectValue placeholder="All Departments" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="all">All Departments</SelectItem>
+                                            {departments.map(dept => (
+                                                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Store className="h-4 w-4 text-slate-400 shrink-0" />
+                                    <Select 
+                                        value={filters.location_id || 'all'} 
+                                        onValueChange={(val) => handleFilterChange('location_id', val === 'all' ? '' : val)}
+                                    >
+                                        <SelectTrigger className="h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs uppercase tracking-widest">
+                                            <SelectValue placeholder="All Locations" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            <SelectItem value="all">All Locations</SelectItem>
+                                            {locations.map(loc => (
+                                                <SelectItem key={loc.id} value={loc.id}>{loc.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </>
                         )}
 
                         <div className="flex items-center gap-2">
-                             {(filters.search || filters.period || filters.category_id || filters.location_id || filters.start_date) && (
+                             {(filters.search || filters.period || filters.category_id || filters.location_id || filters.department_id || filters.start_date) && (
                                 <Button 
                                     variant="ghost" 
                                     onClick={clearFilters}

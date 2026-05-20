@@ -216,7 +216,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
 
                         {/* Issuance Action */}
                         <Can permission="requisitions.issue">
-                            {(requisition.status === 'approved' || requisition.status === 'partially_issued' || requisition.status === 'in_transit') && (
+                            {(requisition.status === 'approved' || requisition.status === 'partially_issued' || requisition.status === 'in_transit') && !isPurchase && (
                                 <Button 
                                     className="bg-brand hover:bg-brand-dark shadow-lg shadow-brand/10 h-8 text-[10px] font-black uppercase tracking-widest px-4 w-full sm:w-auto" 
                                     size="sm"

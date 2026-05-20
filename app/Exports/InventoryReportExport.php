@@ -1,9 +1,8 @@
 <?php
-1: <?php
-2: 
-3: namespace App\Exports;
-4: 
-5: use Maatwebsite\Excel\Concerns\FromCollection;
+ 
+namespace App\Exports;
+ 
+use Maatwebsite\Excel\Concerns\FromCollection;
 6: use Maatwebsite\Excel\Concerns\WithHeadings;
 7: use Maatwebsite\Excel\Concerns\WithMapping;
 8: use Maatwebsite\Excel\Concerns\ShouldAutoSize;

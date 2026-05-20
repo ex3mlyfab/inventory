@@ -78,6 +78,62 @@ class HoldingsController extends Controller
             'stats' => $stats,
             'filters' => $request->only(['search']),
             'department_name' => $user->department?->name ?? 'Your Department',
+            'department_id' => $user->department_id,
+        ]);
+    }
+
+    public function show(Request $request, Product $product)
+    {
+        $user = Auth::user();
+        
+        $locationIds = [];
+        if ($user->storage_location_id) {
+            $locationIds = [$user->storage_location_id];
+        } elseif ($user->department_id) {
+            $locationIds = StorageLocation::where('department_id', $user->department_id)
+                ->pluck('id')
+                ->toArray();
+        }
+
+        if (empty($locationIds)) {
+            abort(403, 'No storage location assigned to your department.');
+        }
+
+        $product->load(['category', 'unitOfMeasure']);
+        $product->current_stock = \App\Models\StockBatch::where('product_id', $product->id)
+            ->whereIn('storage_location_id', $locationIds)
+            ->where('status', 'active')
+            ->sum('quantity_on_hand');
+
+        $movements = \App\Models\StockMovement::with(['user'])
+            ->whereHas('batch', function($q) use ($locationIds, $product) {
+                $q->where('product_id', $product->id)
+                  ->whereIn('storage_location_id', $locationIds);
+            })
+            ->latest()
+            ->paginate(15);
+
+        // Calculate all-time collection and consumption for this item
+        $totalCollected = \App\Models\StockMovement::where('type', 'in')
+            ->whereHas('batch', function($q) use ($locationIds, $product) {
+                $q->where('product_id', $product->id)
+                  ->whereIn('storage_location_id', $locationIds);
+            })->sum('quantity');
+
+        $totalConsumed = \App\Models\StockMovement::where('type', 'out')
+            ->whereHas('batch', function($q) use ($locationIds, $product) {
+                $q->where('product_id', $product->id)
+                  ->whereIn('storage_location_id', $locationIds);
+            })->sum('quantity');
+
+        return Inertia::render('Inventory/Holdings/Show', [
+            'product' => $product,
+            'movements' => $movements,
+            'stats' => [
+                'total_collected' => (int) $totalCollected,
+                'total_consumed' => (int) $totalConsumed,
+            ],
+            'department_name' => $user->department?->name ?? 'Your Department',
         ]);
     }
 }

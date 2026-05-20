@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import AppLogoIcon from '@/components/app-logo-icon';
+import InventoryAnimation from '@/components/inventory-animation';
 import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/types';
 
@@ -12,7 +13,7 @@ export default function AuthSplitLayout({
 
     return (
         <div className="relative grid h-dvh flex-col items-center justify-center px-8 sm:px-0 lg:max-w-none lg:grid-cols-2 lg:px-0">
-            <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
+            <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r overflow-hidden">
                 <div className="absolute inset-0 bg-zinc-900" />
                 <Link
                     href={home()}
@@ -21,6 +22,9 @@ export default function AuthSplitLayout({
                     <AppLogoIcon className="mr-2 size-8 fill-current text-white" />
                     {name}
                 </Link>
+                <div className="relative z-10 flex flex-1 items-center justify-center pt-8">
+                    <InventoryAnimation />
+                </div>
             </div>
             <div className="w-full lg:p-8">
                 <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">

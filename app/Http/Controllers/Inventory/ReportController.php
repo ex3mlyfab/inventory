@@ -336,25 +336,35 @@ class ReportController extends Controller
 
     private function getConsumptionData($filters, $paginate = true)
     {
-        // For consumption, we aggregate 'out' movements or fulfillments
+        // For consumption, we aggregate all types of outflows (requisition issuances, direct consumption, negative adjustments)
         $query = DB::table('stock_movements')
             ->join('stock_batches', 'stock_movements.stock_batch_id', '=', 'stock_batches.id')
             ->join('products', 'stock_batches.product_id', '=', 'products.id')
             ->join('categories', 'products.category_id', '=', 'categories.id')
             ->join('units_of_measure', 'products.unit_of_measure_id', '=', 'units_of_measure.id')
-            ->where('stock_movements.type', 'out')
+            ->leftJoin('storage_locations', 'stock_batches.storage_location_id', '=', 'storage_locations.id')
+            ->whereIn('stock_movements.type', ['consumption', 'requisition_fulfillment', 'out', 'adjustment', 'adjustment_down', 'transfer_out'])
+            ->where('stock_movements.quantity', '<', 0)
             ->select(
                 'products.id',
                 'products.name',
                 'products.sku',
                 'categories.name as category_name',
                 'units_of_measure.abbreviation as uom_name',
-                DB::raw('SUM(stock_movements.quantity) as total_consumed')
+                DB::raw('SUM(ABS(stock_movements.quantity)) as total_consumed')
             )
             ->groupBy('products.id', 'products.name', 'products.sku', 'categories.name', 'units_of_measure.abbreviation');
 
+        if (!empty($filters['department_id'])) {
+            $query->where('storage_locations.department_id', $filters['department_id']);
+        }
+
+        if (!empty($filters['location_id'])) {
+            $query->where('stock_batches.storage_location_id', $filters['location_id']);
+        }
+
         if (!empty($filters['period']) || (!empty($filters['start_date']) && !empty($filters['end_date']))) {
-            $this->applyDateFilters($query, $filters, 'stock_movements.created_at');
+            $query = $this->applyDateFilters($query, $filters, 'stock_movements.created_at');
         }
 
         if (!empty($filters['search'])) {

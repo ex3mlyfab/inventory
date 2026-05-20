@@ -146,11 +146,6 @@ export function AppSidebar() {
                     href: '/procurement/requisitions',
                     permission: 'requisitions.create',
                 },
-                {
-                    title: 'Purchase Orders',
-                    href: '/procurement/purchase-orders',
-                    permission: 'purchase-orders.view',
-                },
             ],
         },
 

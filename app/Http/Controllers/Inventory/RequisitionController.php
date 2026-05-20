@@ -585,6 +585,10 @@ class RequisitionController extends Controller
             return back()->withErrors(['error' => 'This requisition is not in a state that allows issuance.']);
         }
 
+        if ($requisition->type === 'purchase') {
+            return back()->withErrors(['error' => 'Purchase requests cannot be issued from stock. They must be fulfilled via the Goods Received module.']);
+        }
+
         $validated = $request->validate([
             'issuances'                       => ['required', 'array', 'min:1'],
             'issuances.*.requisition_item_id' => ['required', 'ulid', 'exists:requisition_items,id'],

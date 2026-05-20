@@ -1,4 +1,4 @@
-import AuthLayoutTemplate from '@/layouts/auth/auth-simple-layout';
+import AuthLayoutTemplate from '@/layouts/auth/auth-split-layout';
 import { useSessionKeepAlive } from '@/hooks/use-session-keep-alive';
 
 export default function AuthLayout({

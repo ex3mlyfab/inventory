@@ -62,6 +62,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('stock', [\App\Http\Controllers\Inventory\StockController::class, 'index'])->name('stock.index');
         Route::get('stock/{product}/batches', [\App\Http\Controllers\Inventory\StockController::class, 'batches'])->name('stock.batches');
         Route::get('holdings', [HoldingsController::class, 'index'])->name('holdings.index');
+        Route::get('holdings/{product}', [HoldingsController::class, 'show'])->name('holdings.show');
         
         // Adjustments
         Route::get('stock-adjustments/search-batches', [StockAdjustmentController::class, 'searchBatches'])->name('stock-adjustments.search-batches');

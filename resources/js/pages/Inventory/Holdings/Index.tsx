@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
     AlertTriangle, Search, Filter, X, Package, ArrowRightLeft
 } from 'lucide-react';
-import { StockLevelIndicator } from '../Components/StockLevelIndicator';
 import { Input } from '@/components/ui/input';
 
 interface Stats {
@@ -27,13 +26,15 @@ interface Props {
         search?: string;
     };
     department_name: string;
+    department_id: number | null;
 }
 
 export default function HoldingsIndex({ 
     products = { data: [], current_page: 1, from: null, last_page: 1, path: '', per_page: 15, to: null, total: 0, links: [] } as Props['products'], 
     stats = { total_items: 0, low_stock_count: 0 }, 
     filters, 
-    department_name 
+    department_name,
+    department_id 
 }: Props) {
     const handleFilterChange = (key: string, value: string) => {
         const newFilters = { ...filters, [key]: value };
@@ -76,28 +77,11 @@ export default function HoldingsIndex({
             )
         },
         {
-            header: 'Inventory Health',
-            cell: (product) => (
-                <div className="flex items-center gap-3">
-                    <StockLevelIndicator 
-                        currentStock={product.current_stock ?? 0} 
-                        reorderLevel={product.reorder_level} 
-                    />
-                    {product.current_stock <= product.reorder_level && product.current_stock > 0 && (
-                        <Badge className="bg-amber-100 text-amber-700 text-[9px] border-0 px-2 uppercase font-black tracking-widest shrink-0">Low</Badge>
-                    )}
-                    {product.current_stock === 0 && (
-                        <Badge variant="destructive" className="text-[9px] px-2 uppercase font-black tracking-widest shrink-0">Out</Badge>
-                    )}
-                </div>
-            )
-        },
-        {
             header: 'Actions',
             className: 'text-right pr-4',
             cell: (product) => (
                 <div className="flex justify-end gap-2 pr-4">
-                    <Link href={`/inventory/stock/${product.id}/batches`}>
+                    <Link href={`/inventory/holdings/${product.id}`}>
                         <Button variant="ghost" size="sm" className="h-8 text-slate-600 hover:text-brand hover:bg-brand/5 font-bold text-xs uppercase tracking-wider">
                             Details
                         </Button>
@@ -127,7 +111,7 @@ export default function HoldingsIndex({
                     </div>
                 </PageHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <Card className="border-slate-200/60 shadow-sm overflow-hidden group hover:border-brand/40 transition-colors">
                         <CardContent className="p-5 flex items-center justify-between">
                             <div className="space-y-1">
@@ -138,20 +122,6 @@ export default function HoldingsIndex({
                             </div>
                             <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400">
                                 <Package className="h-5 w-5" />
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card className={`border-amber-100 shadow-sm overflow-hidden group hover:border-amber-300 transition-colors ${stats.low_stock_count > 0 ? 'bg-amber-50/20' : ''}`}>
-                        <CardContent className="p-5 flex items-center justify-between">
-                            <div className="space-y-1">
-                                <p className="text-[10px] font-black uppercase tracking-[0.1em] text-amber-500">Stock Alerts</p>
-                                <p className={`text-2xl font-black tracking-tighter ${stats.low_stock_count > 0 ? 'text-amber-600' : 'text-slate-900'}`}>
-                                    {stats.low_stock_count}
-                                </p>
-                            </div>
-                            <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${stats.low_stock_count > 0 ? 'bg-amber-100 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
-                                <AlertTriangle className="h-5 w-5" />
                             </div>
                         </CardContent>
                     </Card>
