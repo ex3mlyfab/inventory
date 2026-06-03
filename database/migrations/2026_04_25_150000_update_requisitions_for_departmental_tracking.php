@@ -14,7 +14,9 @@ return new class extends Migration
     {
         // 1. Update the 'type' enum in requisitions table
         // We use raw SQL because MySQL enum mutation is tricky with Laravel Blueprint
-        DB::statement("ALTER TABLE requisitions MODIFY COLUMN type ENUM('internal', 'purchase', 'departmental') NOT NULL DEFAULT 'internal'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE requisitions MODIFY COLUMN type ENUM('internal', 'purchase', 'departmental') NOT NULL DEFAULT 'internal'");
+        }
 
         // 2. Add requesting_department_id to requisitions table
         Schema::table('requisitions', function (Blueprint $table) {
@@ -47,6 +49,8 @@ return new class extends Migration
             $table->dropColumn('requesting_department_id');
         });
 
-        DB::statement("ALTER TABLE requisitions MODIFY COLUMN type ENUM('internal', 'purchase') NOT NULL DEFAULT 'internal'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE requisitions MODIFY COLUMN type ENUM('internal', 'purchase') NOT NULL DEFAULT 'internal'");
+        }
     }
 };

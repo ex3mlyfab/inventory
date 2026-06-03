@@ -15,6 +15,10 @@ use Inertia\Inertia;
 
 
 Route::any('up', fn () => response()->noContent());
+Route::get('register/check-username', function (\Illuminate\Http\Request $request) {
+    $exists = \App\Models\User::where('username', $request->query('username'))->exists();
+    return response()->json(['exists' => $exists]);
+})->name('register.check-username');
 Route::get('/', function () {
     if (auth()->check()) {
         return redirect()->route('dashboard');

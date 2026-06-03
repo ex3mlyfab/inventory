@@ -16,20 +16,22 @@ return new class extends Migration
         });
 
         // Comprehensive status update
-        DB::statement("ALTER TABLE requisitions MODIFY COLUMN status ENUM(
-            'draft',
-            'submitted',
-            'level1_approved',
-            'approved',
-            'in_transit',
-            'po_created',
-            'completed',
-            'failed',
-            'partially_issued',
-            'issued',
-            'rejected',
-            'cancelled'
-        ) NOT NULL DEFAULT 'draft'");
+        if (\Illuminate\Support\Facades\DB::getDriverName() !== 'sqlite') {
+            \Illuminate\Support\Facades\DB::statement("ALTER TABLE requisitions MODIFY COLUMN status ENUM(
+                'draft',
+                'submitted',
+                'level1_approved',
+                'approved',
+                'in_transit',
+                'po_created',
+                'completed',
+                'failed',
+                'partially_issued',
+                'issued',
+                'rejected',
+                'cancelled'
+            ) NOT NULL DEFAULT 'draft'");
+        }
     }
 
     public function down(): void

@@ -23,6 +23,7 @@ class UserController extends Controller
             ->when($request->search, function ($q, $search) {
                 $q->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
+                      ->orWhere('username', 'like', "%{$search}%")
                       ->orWhere('email', 'like', "%{$search}%")
                       ->orWhere('employee_id', 'like', "%{$search}%");
                 });
@@ -68,6 +69,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'regex:/^[a-zA-Z0-9_.-]+$/', 'min:3', 'max:255', 'unique:users,username'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'department_id' => ['nullable', 'exists:departments,id'],
@@ -80,6 +82,7 @@ class UserController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
             'department_id' => $validated['department_id'] ?? null,
@@ -116,6 +119,7 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => ['required', 'string', 'regex:/^[a-zA-Z0-9_.-]+$/', 'min:3', 'max:255', "unique:users,username,{$user->id}"],
             'email' => ['required', 'email', "unique:users,email,{$user->id}"],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'department_id' => ['nullable', 'exists:departments,id'],
@@ -128,6 +132,7 @@ class UserController extends Controller
 
         $updateData = [
             'name' => $validated['name'],
+            'username' => $validated['username'],
             'email' => $validated['email'],
             'department_id' => $validated['department_id'] ?? null,
             'employee_id' => $validated['employee_id'] ?? null,

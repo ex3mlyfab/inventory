@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
         // Create Super Admin user
         $superAdmin = User::factory()->create([
             'name' => 'System Administrator',
+            'username' => 'admin',
             'email' => 'admin@fmc.gov.ng',
             'employee_id' => 'FMC-ADMIN-001',
             'is_active' => true,
@@ -32,13 +33,13 @@ class DatabaseSeeder extends Seeder
 
         // Create a test user for each role
         $testUsers = [
-            ['name' => 'Inventory Manager', 'email' => 'inventory@fmc.gov.ng', 'employee_id' => 'FMC-INV-001', 'role' => 'Inventory Manager', 'location' => 'MAIN-ST'],
-            ['name' => 'Procurement Officer', 'email' => 'procurement@fmc.gov.ng', 'employee_id' => 'FMC-PROC-001', 'role' => 'Procurement Officer', 'location' => null],
-            ['name' => 'Chief Pharmacist', 'email' => 'pharmacy@fmc.gov.ng', 'employee_id' => 'FMC-PHARM-001', 'role' => 'Pharmacist', 'location' => 'PHARM-CENT'],
-            ['name' => 'Ward Head - Surgery', 'email' => 'ward.surgery@fmc.gov.ng', 'employee_id' => 'FMC-WARD-001', 'role' => 'Ward/Dept Head', 'location' => 'WARD-1-ST'],
-            ['name' => 'Store Officer', 'email' => 'store@fmc.gov.ng', 'employee_id' => 'FMC-STORE-001', 'role' => 'Store Officer', 'location' => 'MAIN-ST'],
-            ['name' => 'Biomedical Engineer', 'email' => 'biomed@fmc.gov.ng', 'employee_id' => 'FMC-BIOMED-001', 'role' => 'Biomedical Engineer', 'location' => null],
-            ['name' => 'Internal Auditor', 'email' => 'auditor@fmc.gov.ng', 'employee_id' => 'FMC-AUDIT-001', 'role' => 'Auditor', 'location' => null],
+            ['name' => 'Inventory Manager', 'username' => 'inventory', 'email' => 'inventory@fmc.gov.ng', 'employee_id' => 'FMC-INV-001', 'role' => 'Inventory Manager', 'location' => 'MAIN-ST'],
+            ['name' => 'Procurement Officer', 'username' => 'procurement', 'email' => 'procurement@fmc.gov.ng', 'employee_id' => 'FMC-PROC-001', 'role' => 'Procurement Officer', 'location' => null],
+            ['name' => 'Chief Pharmacist', 'username' => 'pharmacy', 'email' => 'pharmacy@fmc.gov.ng', 'employee_id' => 'FMC-PHARM-001', 'role' => 'Pharmacist', 'location' => 'PHARM-CENT'],
+            ['name' => 'Ward Head - Surgery', 'username' => 'ward.surgery', 'email' => 'ward.surgery@fmc.gov.ng', 'employee_id' => 'FMC-WARD-001', 'role' => 'Ward/Dept Head', 'location' => 'WARD-1-ST'],
+            ['name' => 'Store Officer', 'username' => 'store', 'email' => 'store@fmc.gov.ng', 'employee_id' => 'FMC-STORE-001', 'role' => 'Store Officer', 'location' => 'MAIN-ST'],
+            ['name' => 'Biomedical Engineer', 'username' => 'biomed', 'email' => 'biomed@fmc.gov.ng', 'employee_id' => 'FMC-BIOMED-001', 'role' => 'Biomedical Engineer', 'location' => null],
+            ['name' => 'Internal Auditor', 'username' => 'auditor', 'email' => 'auditor@fmc.gov.ng', 'employee_id' => 'FMC-AUDIT-001', 'role' => 'Auditor', 'location' => null],
         ];
 
         foreach ($testUsers as $data) {
@@ -49,6 +50,7 @@ class DatabaseSeeder extends Seeder
 
             $user = User::factory()->create([
                 'name' => $data['name'],
+                'username' => $data['username'],
                 'email' => $data['email'],
                 'employee_id' => $data['employee_id'],
                 'storage_location_id' => $locationId,

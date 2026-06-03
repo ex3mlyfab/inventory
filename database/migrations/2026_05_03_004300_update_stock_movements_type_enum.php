@@ -19,8 +19,9 @@ return new class extends Migration
         // For MySQL, we need to use a raw query to change the enum or just change it to string then back to enum
         // However, standard Laravel way for simple string columns is more flexible.
         // Given this is an existing enum, we'll use DB::statement for precision.
-        
-        DB::statement("ALTER TABLE stock_movements MODIFY COLUMN type ENUM('in', 'out', 'transfer', 'adjustment', 'disposal', 'requisition_fulfillment', 'consumption') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE stock_movements MODIFY COLUMN type ENUM('in', 'out', 'transfer', 'adjustment', 'disposal', 'requisition_fulfillment', 'consumption') NOT NULL");
+        }
     }
 
     /**
@@ -28,6 +29,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement("ALTER TABLE stock_movements MODIFY COLUMN type ENUM('in', 'out', 'transfer', 'adjustment', 'disposal') NOT NULL");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE stock_movements MODIFY COLUMN type ENUM('in', 'out', 'transfer', 'adjustment', 'disposal') NOT NULL");
+        }
     }
 };

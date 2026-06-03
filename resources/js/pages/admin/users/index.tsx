@@ -139,7 +139,10 @@ export default function UsersIndex({ users, roles, departments, filters }: Props
                             ) : (
                                 users.data.map((user) => (
                                     <TableRow key={user.id} className="hover:bg-[#f6fbf6]">
-                                        <TableCell className="font-medium text-[#181d1a]">{user.name}</TableCell>
+                                        <TableCell className="font-medium text-[#181d1a]">
+                                            <div>{user.name}</div>
+                                            <div className="text-xs text-[#6D7175]">@{user.username}</div>
+                                        </TableCell>
                                         <TableCell className="text-[#3e4944]">{user.email}</TableCell>
                                         <TableCell>
                                             <code className="rounded bg-[#f0f5f0] px-1.5 py-0.5 text-xs text-[#3e4944]">

@@ -15,7 +15,7 @@ use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'department_id', 'storage_location_id', 'employee_id', 'phone', 'is_active'])]
+#[Fillable(['name', 'username', 'email', 'password', 'department_id', 'storage_location_id', 'employee_id', 'phone', 'is_active'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -43,7 +43,7 @@ class User extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'department_id', 'storage_location_id', 'employee_id', 'phone', 'is_active'])
+            ->logOnly(['name', 'username', 'email', 'department_id', 'storage_location_id', 'employee_id', 'phone', 'is_active'])
             ->logOnlyDirty();
     }
 

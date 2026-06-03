@@ -11,31 +11,45 @@ return new class extends Migration
     {
         // 1. Add level-1 and level-2 approval tracking columns
         Schema::table('requisitions', function (Blueprint $table) {
-            $table->foreignUlid('level1_approved_by')
-                  ->nullable()->after('approved_by')
-                  ->constrained('users')->nullOnDelete();
-            $table->timestamp('level1_approved_at')->nullable()->after('level1_approved_by');
-            $table->text('level1_notes')->nullable()->after('level1_approved_at');
+            if (!Schema::hasColumn('requisitions', 'level1_approved_by')) {
+                $table->foreignUlid('level1_approved_by')
+                      ->nullable()->after('approved_by')
+                      ->constrained('users')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('requisitions', 'level1_approved_at')) {
+                $table->timestamp('level1_approved_at')->nullable()->after('level1_approved_by');
+            }
+            if (!Schema::hasColumn('requisitions', 'level1_notes')) {
+                $table->text('level1_notes')->nullable()->after('level1_approved_at');
+            }
 
-            $table->foreignUlid('level2_approved_by')
-                  ->nullable()->after('level1_notes')
-                  ->constrained('users')->nullOnDelete();
-            $table->timestamp('level2_approved_at')->nullable()->after('level2_approved_by');
-            $table->text('level2_notes')->nullable()->after('level2_approved_at');
+            if (!Schema::hasColumn('requisitions', 'level2_approved_by')) {
+                $table->foreignUlid('level2_approved_by')
+                      ->nullable()->after('level1_notes')
+                      ->constrained('users')->nullOnDelete();
+            }
+            if (!Schema::hasColumn('requisitions', 'level2_approved_at')) {
+                $table->timestamp('level2_approved_at')->nullable()->after('level2_approved_by');
+            }
+            if (!Schema::hasColumn('requisitions', 'level2_notes')) {
+                $table->text('level2_notes')->nullable()->after('level2_approved_at');
+            }
         });
 
         // 2. Extend the status enum to include 'level1_approved'
         // MySQL requires ALTER COLUMN to change enum; we do it via raw SQL
-        DB::statement("ALTER TABLE requisitions MODIFY COLUMN status ENUM(
-            'draft',
-            'submitted',
-            'level1_approved',
-            'approved',
-            'partially_issued',
-            'issued',
-            'rejected',
-            'cancelled'
-        ) NOT NULL DEFAULT 'draft'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE requisitions MODIFY COLUMN status ENUM(
+                'draft',
+                'submitted',
+                'level1_approved',
+                'approved',
+                'partially_issued',
+                'issued',
+                'rejected',
+                'cancelled'
+            ) NOT NULL DEFAULT 'draft'");
+        }
     }
 
     public function down(): void
@@ -48,14 +62,16 @@ return new class extends Migration
         });
 
         // Revert enum (drop level1_approved)
-        DB::statement("ALTER TABLE requisitions MODIFY COLUMN status ENUM(
-            'draft',
-            'submitted',
-            'approved',
-            'partially_issued',
-            'issued',
-            'rejected',
-            'cancelled'
-        ) NOT NULL DEFAULT 'draft'");
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE requisitions MODIFY COLUMN status ENUM(
+                'draft',
+                'submitted',
+                'approved',
+                'partially_issued',
+                'issued',
+                'rejected',
+                'cancelled'
+            ) NOT NULL DEFAULT 'draft'");
+        }
     }
 };

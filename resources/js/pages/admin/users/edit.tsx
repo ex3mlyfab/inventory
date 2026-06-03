@@ -25,6 +25,7 @@ interface Props {
 export default function EditUser({ user, userRoles, roles, departments }: Props) {
     const { data, setData, put, processing, errors } = useForm({
         name: user.name,
+        username: user.username,
         email: user.email,
         password: '',
         password_confirmation: '',
@@ -74,6 +75,11 @@ export default function EditUser({ user, userRoles, roles, departments }: Props)
                                 <Label htmlFor="name" className="text-xs font-medium text-[#202223]">Full Name *</Label>
                                 <Input id="name" value={data.name} onChange={(e) => setData('name', e.target.value)} className="border-[#babfc3] focus-visible:ring-[#008060]" />
                                 {errors.name && <p className="text-xs text-[#D82C0D]">{errors.name}</p>}
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="username" className="text-xs font-medium text-[#202223]">Username *</Label>
+                                <Input id="username" value={data.username} onChange={(e) => setData('username', e.target.value)} className="border-[#babfc3] focus-visible:ring-[#008060]" />
+                                {errors.username && <p className="text-xs text-[#D82C0D]">{errors.username}</p>}
                             </div>
                             <div className="space-y-1.5">
                                 <Label htmlFor="email" className="text-xs font-medium text-[#202223]">Email Address *</Label>
