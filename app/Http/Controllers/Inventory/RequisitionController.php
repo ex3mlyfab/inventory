@@ -223,6 +223,27 @@ class RequisitionController extends Controller
         ]);
     }
 
+    /**
+     * Get all available stock for a specific location.
+     */
+    public function locationStock(Request $request)
+    {
+        $request->validate([
+            'location_id' => ['required', 'ulid', 'exists:storage_locations,id'],
+        ]);
+
+        $stocks = \App\Models\StockBatch::where('storage_location_id', $request->location_id)
+            ->where('status', 'active')
+            ->select('product_id', DB::raw('SUM(quantity_on_hand) as available'))
+            ->groupBy('product_id')
+            ->having('available', '>', 0)
+            ->get();
+
+        return response()->json([
+            'data' => $stocks,
+        ]);
+    }
+
     // ── Store ──────────────────────────────────────────────────────────
 
     public function store(Request $request)

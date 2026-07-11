@@ -3,6 +3,7 @@ import {
     BarChart3,
     Box,
     ClipboardList,
+    FileText,
     Gauge,
     Package,
     Pill,
@@ -40,6 +41,14 @@ export function AppSidebar() {
             title: 'Dashboard',
             href: dashboard(),
             icon: Gauge,
+        },
+
+        // ─── Requisitions ───────────────────────────────────────
+        {
+            title: 'Requisitions',
+            href: '/procurement/requisitions',
+            icon: FileText,
+            permission: 'requisitions.create',
         },
 
         // ─── Product Catalog ────────────────────────────────────
@@ -140,11 +149,6 @@ export function AppSidebar() {
                     title: 'Goods Received (GRN)',
                     href: '/procurement/grn',
                     permission: 'grn.view',
-                },
-                {
-                    title: 'Requisitions',
-                    href: '/procurement/requisitions',
-                    permission: 'requisitions.create',
                 },
             ],
         },

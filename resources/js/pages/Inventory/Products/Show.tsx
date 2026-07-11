@@ -179,7 +179,7 @@ export default function ProductShow({ product, recentMovements, chartData }: Pro
                                 </Button>
                             </Link>
                         </Can>
-                        <Link href="/inventory/stock/movements">
+                        <Link href="/inventory/stock-movements">
                             <Button variant="outline" className="border-brand/20 hover:bg-brand/5 font-bold">
                                 <History className="w-4 h-4 mr-2" />
                                 Stock History

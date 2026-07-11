@@ -54,7 +54,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const isPurchase = type === 'purchase';
 
     const http = useHttp();
-    const { data, setData, post, processing, errors } = useForm<{
+    const { data, setData, post, processing, errors, transform } = useForm<{
         type: RequisitionType;
         reference: string;
         requesting_location_id: string;
@@ -155,7 +155,25 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     // Re-check all items if location changes — pass locationId explicitly to avoid stale closures
     React.useEffect(() => {
         const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
-        if (locationId) {
+        
+        if (isDepartmental && data.issuing_location_id) {
+            http.get(`/procurement/requisitions/location-stock?location_id=${data.issuing_location_id}`, {
+                onSuccess: (res: any) => {
+                    const stocks = res?.data?.data ?? res?.data ?? [];
+                    if (stocks.length > 0) {
+                        setData('items', stocks.map((s: any) => ({
+                            product_id: s.product_id,
+                            quantity_requested: '',
+                            quantity_on_hand: '',
+                            estimated_unit_cost: '',
+                            available_stock: Number(s.available)
+                        })));
+                    } else {
+                        setData('items', [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+                    }
+                }
+            });
+        } else if (locationId) {
             data.items.forEach((item, i) => {
                 if (item.product_id) checkStock(i, item.product_id, locationId);
             });
@@ -170,6 +188,18 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (isDepartmental) {
+            transform((currentData) => ({
+                ...currentData,
+                items: currentData.items.filter(item => 
+                    item.product_id && 
+                    item.quantity_requested && 
+                    Number(item.quantity_requested) > 0
+                )
+            }));
+        }
+
         post('/procurement/requisitions');
     };
 

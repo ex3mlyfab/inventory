@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
 import { DataTable, Column } from '@/components/shared/data-table';
 import { Button } from '@/components/ui/button';
@@ -48,6 +48,8 @@ const TYPE_ICONS = {
 };
 
 export default function RequisitionsIndex({ requisitions, filters, stats }: Props) {
+    const { auth } = usePage<any>().props;
+    const user = auth.user;
     const [search, setSearch] = useState(filters.search ?? '');
 
     const filter = (updates: Record<string, string | undefined>) =>
@@ -178,18 +180,53 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
             >
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                     <Can permission="requisitions.create">
-                        <Link href="/procurement/requisitions/create?type=internal" className="w-full sm:w-auto">
-                            <Button variant="outline" className="w-full border-brand/20 text-brand hover:bg-brand/5 gap-2 h-10">
-                                <ArrowRightLeft className="h-4 w-4" />
-                                Internal Request
-                            </Button>
-                        </Link>
-                        <Link href="/procurement/requisitions/create?type=purchase" className="w-full sm:w-auto">
-                            <Button className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-md gap-2 h-10">
-                                <ShoppingCart className="h-4 w-4" />
-                                Purchase Request
-                            </Button>
-                        </Link>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button className="w-full sm:w-auto bg-brand hover:bg-brand-dark text-brand-foreground shadow-md gap-2 h-10">
+                                    <Plus className="h-4 w-4" />
+                                    New Requisition
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56">
+                                {user.role !== 'Ward/Dept Head' && (
+                                    <>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/procurement/requisitions/create?type=internal" className="flex items-center gap-3 cursor-pointer py-2">
+                                                <div className="h-7 w-7 rounded-md bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                                                    <ArrowRightLeft className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-[13px] leading-none">Internal Transfer</span>
+                                                    <span className="text-[10px] text-text-muted mt-1">Store-to-store</span>
+                                                </div>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/procurement/requisitions/create?type=purchase" className="flex items-center gap-3 cursor-pointer py-2">
+                                                <div className="h-7 w-7 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                                                    <ShoppingCart className="h-3.5 w-3.5" />
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-[13px] leading-none">Purchase Request</span>
+                                                    <span className="text-[10px] text-text-muted mt-1">External procurement</span>
+                                                </div>
+                                            </Link>
+                                        </DropdownMenuItem>
+                                    </>
+                                )}
+                                <DropdownMenuItem asChild>
+                                    <Link href="/procurement/requisitions/create?type=departmental" className="flex items-center gap-3 cursor-pointer py-2">
+                                        <div className="h-7 w-7 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                                            <Building2 className="h-3.5 w-3.5" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="font-bold text-[13px] leading-none">Departmental Issue</span>
+                                            <span className="text-[10px] text-text-muted mt-1">Unit supply</span>
+                                        </div>
+                                    </Link>
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     </Can>
                 </div>
             </PageHeader>
@@ -340,12 +377,28 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                             <p className="text-sm text-text-muted mt-1 max-w-sm">Create an internal transfer or purchase request to stock up your location.</p>
                         </div>
                         <Can permission="requisitions.create">
-                            <div className="flex gap-4">
-                                <Link href="/procurement/requisitions/create?type=internal">
-                                    <Button variant="outline" className="h-11 px-6">Internal Request</Button>
-                                </Link>
-                                <Link href="/procurement/requisitions/create?type=purchase">
-                                    <Button className="bg-brand text-brand-foreground h-11 px-6 shadow-lg shadow-brand/20">Purchase Request</Button>
+                            <div className="flex flex-wrap justify-center gap-4 mt-2">
+                                {user.role !== 'Ward/Dept Head' && (
+                                    <>
+                                        <Link href="/procurement/requisitions/create?type=internal">
+                                            <Button variant="outline" className="h-11 px-6 border-brand/20 text-brand hover:bg-brand/5 gap-2">
+                                                <ArrowRightLeft className="h-4 w-4" />
+                                                Internal Request
+                                            </Button>
+                                        </Link>
+                                        <Link href="/procurement/requisitions/create?type=purchase">
+                                            <Button className="bg-brand text-brand-foreground h-11 px-6 shadow-lg shadow-brand/20 hover:bg-brand-dark gap-2">
+                                                <ShoppingCart className="h-4 w-4" />
+                                                Purchase Request
+                                            </Button>
+                                        </Link>
+                                    </>
+                                )}
+                                <Link href="/procurement/requisitions/create?type=departmental">
+                                    <Button variant="outline" className="h-11 px-6 border-blue-500/20 text-blue-700 hover:bg-blue-50 gap-2">
+                                        <Building2 className="h-4 w-4" />
+                                        Departmental Request
+                                    </Button>
                                 </Link>
                             </div>
                         </Can>
