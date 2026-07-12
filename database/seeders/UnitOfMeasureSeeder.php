@@ -55,6 +55,35 @@ class UnitOfMeasureSeeder extends Seeder
             'conversion_factor' => 1.0000,
         ]);
 
+        $pack = UnitOfMeasure::create([
+            'name' => 'Pack',
+            'abbreviation' => 'pk',
+            'base_unit_id' => null,
+            'conversion_factor' => 1.0000,
+        ]);
+
+        $roll = UnitOfMeasure::create([
+            'name' => 'Roll',
+            'abbreviation' => 'roll',
+            'base_unit_id' => null,
+            'conversion_factor' => 1.0000,
+        ]);
+
+        $packets = UnitOfMeasure::create([
+            'name' => 'Packets',
+            'abbreviation' => 'pckts',
+            'base_unit_id' => null,
+            'conversion_factor' => 1.0000,
+        ]);
+        $can = UnitOfMeasure::create([
+            'name' => 'Can',
+            'abbreviation' => 'can',
+            'base_unit_id' => null,
+            'conversion_factor' => 1.0000,
+        ]);
+
+        
+
         // Hierarchical Units (Tablets)
         UnitOfMeasure::create([
             'name' => 'Pack of 10',

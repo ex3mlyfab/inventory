@@ -1,16 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from '@/components/shared/page-header';
 import { DataTable, Column, PaginationMeta } from '@/components/shared/data-table';
 import { StatusBadge } from '@/components/shared/status-badge';
+import { StatCard } from '@/components/shared/stat-card';
 import { 
     History, 
     User as UserIcon, 
     Calendar,
     Search,
     X,
-    FileJson
+    FileJson,
+    Activity,
+    Users,
+    Server,
+    Shield
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,21 +30,34 @@ interface AuditLog {
     properties: any;
 }
 
+interface Stats {
+    total_logs: number;
+    today_logs: number;
+    system_events: number;
+    user_actions: number;
+}
+
 interface Props {
     activities: {
         data: AuditLog[];
         meta: PaginationMeta;
     };
+    stats: Stats;
     filters: {
         search?: string;
+        start_date?: string;
+        end_date?: string;
+        event?: string;
     };
 }
 
-export default function AuditTrail({ activities, filters }: Props) {
-    const [search, setSearch] = React.useState(filters.search || '');
+export default function AuditTrail({ activities, stats, filters }: Props) {
+    const [search, setSearch] = useState(filters.search || '');
+    const [startDate, setStartDate] = useState(filters.start_date || '');
+    const [endDate, setEndDate] = useState(filters.end_date || '');
 
     const handleSearch = () => {
-        router.get('/reports/audit-trail', { search }, {
+        router.get('/reports/audit-trail', { search, start_date: startDate, end_date: endDate }, {
             preserveState: true,
             replace: true
         });
@@ -48,6 +65,8 @@ export default function AuditTrail({ activities, filters }: Props) {
 
     const clearSearch = () => {
         setSearch('');
+        setStartDate('');
+        setEndDate('');
         router.get('/reports/audit-trail', {}, { replace: true });
     };
 
@@ -128,6 +147,33 @@ export default function AuditTrail({ activities, filters }: Props) {
                 }
             />
 
+            {/* Snapshot Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <StatCard 
+                    label="Total Events Logged" 
+                    value={stats?.total_logs ?? 0} 
+                    icon={Activity} 
+                />
+                <StatCard 
+                    label="Events Today" 
+                    value={stats?.today_logs ?? 0} 
+                    icon={Calendar} 
+                    className="border-indigo-100 bg-indigo-50/30"
+                />
+                <StatCard 
+                    label="User Actions" 
+                    value={stats?.user_actions ?? 0} 
+                    icon={Users} 
+                    className="border-emerald-100 bg-emerald-50/30"
+                />
+                <StatCard 
+                    label="System Events" 
+                    value={stats?.system_events ?? 0} 
+                    icon={Server} 
+                    className="border-amber-100 bg-amber-50/30"
+                />
+            </div>
+
             {/* Filter Bar */}
             <Card className="border-slate-200/60 bg-slate-50/50 backdrop-blur-sm shadow-xl shadow-slate-200/40 rounded-[2rem] overflow-hidden">
                 <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-center">
@@ -150,6 +196,20 @@ export default function AuditTrail({ activities, filters }: Props) {
                                 <X className="h-4 w-4" />
                             </Button>
                         )}
+                    </div>
+                    <div className="flex gap-2">
+                        <Input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="rounded-2xl h-12 border-slate-200 text-sm focus:ring-4 focus:ring-primary/10 w-40 bg-white"
+                        />
+                        <Input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="rounded-2xl h-12 border-slate-200 text-sm focus:ring-4 focus:ring-primary/10 w-40 bg-white"
+                        />
                     </div>
                     <Button 
                         onClick={handleSearch}

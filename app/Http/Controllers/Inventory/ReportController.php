@@ -106,11 +106,21 @@ class ReportController extends Controller
             'format' => 'required|in:pdf,csv',
         ]);
 
-        $modelName = "App\\Models\\" . $request->input('model');
-        $query = $modelName::query();
+        $model = $request->input('model');
+        $modelName = "App\\Models\\" . $model;
 
-        // Basic date filtering if provided
-        if ($request->has('start_date') && $request->has('end_date')) {
+        // Eager-load relationships to avoid raw FK IDs in export
+        $eagerLoad = match ($model) {
+            'Product'       => ['category', 'unitOfMeasure'],
+            'StockBatch'    => ['product', 'storageLocation', 'supplier'],
+            'StockMovement' => ['batch.product', 'user'],
+            'Supplier'      => [],
+            default         => [],
+        };
+
+        $query = $modelName::with($eagerLoad);
+
+        if ($request->filled('start_date') && $request->filled('end_date')) {
             $query->whereBetween('created_at', [$request->start_date . ' 00:00:00', $request->end_date . ' 23:59:59']);
         }
 
@@ -120,18 +130,77 @@ class ReportController extends Controller
             return back()->with('error', 'No data found for the selected query.');
         }
 
-        $filename = strtolower($request->input('model')) . "_export_" . now()->format('YmdHis');
+        $filename = strtolower($model) . "_export_" . now()->format('YmdHis');
 
         if ($request->input('format') === 'pdf') {
-            $pdf = Pdf::loadView('reports.generic', ['data' => $data, 'title' => $request->input('model') . ' Export']);
+            $pdf = Pdf::loadView('reports.generic', ['data' => $data, 'title' => $model . ' Export']);
             return $pdf->download($filename . '.pdf');
         }
 
-        return response()->streamDownload(function() use ($data) {
-            $first = $data->first()->toArray();
+        // Map each model type to human-readable columns
+        $mapper = match ($model) {
+            'Product' => function ($row) {
+                return [
+                    'SKU'                  => $row->sku,
+                    'Name'                 => $row->name,
+                    'Category'             => $row->category?->name ?? '—',
+                    'Unit of Measure'      => $row->unitOfMeasure?->abbreviation ?? '—',
+                    'Reorder Level'        => $row->reorder_level,
+                    'Reorder Quantity'     => $row->reorder_quantity,
+                    'Expirable'            => $row->is_expirable ? 'Yes' : 'No',
+                    'Requires Prescription'=> $row->requires_prescription ? 'Yes' : 'No',
+                    'Status'               => ucfirst($row->status),
+                    'Created At'           => $row->created_at?->format('Y-m-d H:i'),
+                ];
+            },
+            'StockBatch' => function ($row) {
+                return [
+                    'Product'          => $row->product?->name ?? '—',
+                    'SKU'              => $row->product?->sku ?? '—',
+                    'Supplier'         => $row->supplier?->name ?? '—',
+                    'Batch Number'     => $row->batch_number,
+                    'Reference'        => $row->reference,
+                    'Qty Received'     => $row->quantity_received,
+                    'Qty on Hand'      => $row->quantity_on_hand,
+                    'Unit Cost'        => $row->unit_cost,
+                    'Storage Location' => $row->storageLocation?->name ?? '—',
+                    'Manufacturing Date'=> $row->manufacturing_date?->format('Y-m-d') ?? '—',
+                    'Expiry Date'      => $row->expiry_date?->format('Y-m-d') ?? 'N/A',
+                    'Status'           => ucfirst($row->status),
+                ];
+            },
+            'StockMovement' => function ($row) {
+                return [
+                    'Date'       => $row->created_at?->format('Y-m-d H:i'),
+                    'Product'    => $row->batch?->product?->name ?? '—',
+                    'Batch'      => $row->batch?->batch_number ?? '—',
+                    'Type'       => ucfirst(str_replace('_', ' ', $row->type)),
+                    'Quantity'   => $row->quantity,
+                    'Reference'  => $row->reference_type ? ($row->reference_type . ' #' . $row->reference_id) : '—',
+                    'Performed By' => $row->user?->name ?? 'System',
+                    'Notes'      => $row->notes,
+                ];
+            },
+            'Supplier' => function ($row) {
+                return [
+                    'Name'         => $row->name,
+                    'Contact Name' => $row->contact_name,
+                    'Email'        => $row->email,
+                    'Phone'        => $row->phone,
+                    'Address'      => $row->address,
+                    'Status'       => ucfirst($row->status ?? ''),
+                    'Created At'   => $row->created_at?->format('Y-m-d H:i'),
+                ];
+            },
+            default => fn ($row) => $row->toArray(),
+        };
+
+        return response()->streamDownload(function() use ($data, $mapper) {
+            $first = $mapper($data->first());
             echo implode(',', array_keys($first)) . "\n";
             foreach ($data as $row) {
-                echo implode(',', array_map(fn($v) => is_array($v) ? json_encode($v) : $v, $row->toArray())) . "\n";
+                $mapped = $mapper($row);
+                echo implode(',', array_map(fn($v) => '"' . str_replace('"', '""', (string) $v) . '"', $mapped)) . "\n";
             }
         }, $filename . '.csv');
     }
@@ -215,6 +284,17 @@ class ReportController extends Controller
             });
         }
 
+        if ($request->filled('start_date') && $request->filled('end_date')) {
+            $query->whereBetween('created_at', [
+                $request->input('start_date') . ' 00:00:00',
+                $request->input('end_date') . ' 23:59:59'
+            ]);
+        }
+        
+        if ($request->filled('event')) {
+            $query->where('event', $request->input('event'));
+        }
+
         $activities = $query->paginate(20)
             ->withQueryString()
             ->through(fn($activity) => [
@@ -226,9 +306,17 @@ class ReportController extends Controller
                 'properties' => $activity->properties,
             ]);
 
+        $stats = [
+            'total_logs' => Activity::count(),
+            'today_logs' => Activity::whereDate('created_at', today())->count(),
+            'system_events' => Activity::whereNull('causer_id')->count(),
+            'user_actions' => Activity::whereNotNull('causer_id')->count(),
+        ];
+
         return Inertia::render('Inventory/Reports/AuditTrail', [
             'activities' => $activities,
-            'filters' => $request->only(['search'])
+            'stats' => $stats,
+            'filters' => $request->only(['search', 'start_date', 'end_date', 'event'])
         ]);
     }
 
