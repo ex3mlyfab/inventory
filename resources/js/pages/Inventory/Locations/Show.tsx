@@ -290,10 +290,10 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                             <div key={user.id} className="p-4 rounded-2xl border border-border bg-white shadow-sm flex items-center justify-between group hover:border-brand/50 transition-all">
                                                 <div className="flex items-center gap-4">
                                                     <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 font-bold">
-                                                        {user.name.charAt(0)}
+                                                        {user.name?.charAt(0) ?? '?'}
                                                     </div>
                                                     <div className="flex flex-col">
-                                                        <span className="text-sm font-bold text-text-primary line-clamp-1">{user.name}</span>
+                                                        <span className="text-sm font-bold text-text-primary line-clamp-1">{user.name ?? '—'}</span>
                                                         <span className="text-[10px] text-text-muted truncate max-w-[120px]">{user.email}</span>
                                                     </div>
                                                 </div>
