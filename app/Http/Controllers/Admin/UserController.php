@@ -82,7 +82,7 @@ class UserController extends Controller
 
         $user = User::create([
             'name' => $validated['name'],
-            'username' => $validated['username'],
+            'username' => strtolower($validated['username']),
             'email' => $validated['email'],
             'password' => bcrypt($validated['password']),
             'department_id' => $validated['department_id'] ?? null,
@@ -132,7 +132,7 @@ class UserController extends Controller
 
         $updateData = [
             'name' => $validated['name'],
-            'username' => $validated['username'],
+            'username' => strtolower($validated['username']),
             'email' => $validated['email'],
             'department_id' => $validated['department_id'] ?? null,
             'employee_id' => $validated['employee_id'] ?? null,
