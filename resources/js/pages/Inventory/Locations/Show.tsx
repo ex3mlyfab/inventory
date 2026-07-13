@@ -97,8 +97,8 @@ export default function ShowLocation({ location, inventory, history, assignableU
     };
 
     const filteredAssignableUsers = assignableUsers.filter(u => 
-        u.name.toLowerCase().includes(searchUser.toLowerCase()) || 
-        u.email.toLowerCase().includes(searchUser.toLowerCase())
+        (u.name ?? '').toLowerCase().includes(searchUser.toLowerCase()) || 
+        (u.email ?? '').toLowerCase().includes(searchUser.toLowerCase())
     );
 
     const getTypeLabel = (type: string) => {
@@ -364,7 +364,7 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                                             "rounded-full capitalize text-[10px] px-2 py-0",
                                                             (movement.type === 'receive' || movement.type === 'transfer_in') && "border-emerald-200 bg-emerald-50 text-emerald-700"
                                                         )}>
-                                                            {movement.type.replace('_', ' ')}
+                                                            {movement.type?.replace('_', ' ') ?? '—'}
                                                         </Badge>
                                                     </TableCell>
                                                     <TableCell className="text-center">
@@ -377,9 +377,9 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                                     <TableCell>
                                                         <div className="flex items-center gap-2">
                                                             <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-bold">
-                                                                {movement.user?.name.charAt(0)}
+                                                                {movement.user?.name?.charAt(0) ?? '?'}
                                                             </div>
-                                                            <span className="text-xs font-medium text-text-secondary">{movement.user?.name}</span>
+                                                            <span className="text-xs font-medium text-text-secondary">{movement.user?.name ?? '—'}</span>
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="pr-6 text-right">
