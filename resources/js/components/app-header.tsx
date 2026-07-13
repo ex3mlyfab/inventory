@@ -141,7 +141,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
 
                                         <div className="flex flex-col space-y-4">
                                             {visibleRightNavItems.map((item) => {
-                                                const isExternal = item.href.startsWith('http');
+                                                const isExternal = toUrl(item.href).startsWith('http');
                                                 const className = "flex items-center space-x-2 font-medium";
                                                 const content = (
                                                     <>
@@ -230,7 +230,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                             </Button>
                             <div className="ml-1 hidden gap-1 lg:flex">
                                 {visibleRightNavItems.map((item) => {
-                                    const isExternal = item.href.startsWith('http');
+                                    const isExternal = toUrl(item.href).startsWith('http');
                                     const className = "group inline-flex h-9 w-9 items-center justify-center rounded-md bg-transparent p-0 text-sm font-medium text-accent-foreground ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50";
                                     const content = (
                                         <>

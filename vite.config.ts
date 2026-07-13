@@ -13,11 +13,7 @@ export default defineConfig({
             refresh: true,
         }),
         inertia(),
-        react({
-            babel: {
-                plugins: ['babel-plugin-react-compiler'],
-            },
-        }),
+        react(),
         tailwindcss(),
         wayfinder({
             formVariants: true,
