@@ -86,12 +86,13 @@ export default function ShowLocation({ location, inventory, history, assignableU
         }
     };
 
-    const toggleUserSelection = (userId: string) => {
+    const toggleUserSelection = (userId: string | number) => {
+        const id = String(userId);
         const current = [...assignForm.data.user_ids];
-        if (current.includes(userId)) {
-            assignForm.setData('user_ids', current.filter(id => id !== userId));
+        if (current.includes(id)) {
+            assignForm.setData('user_ids', current.filter(existing => existing !== id));
         } else {
-            assignForm.setData('user_ids', [...current, userId]);
+            assignForm.setData('user_ids', [...current, id]);
         }
     };
 
@@ -452,14 +453,14 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                         <div 
                                             key={user.id} 
                                             className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${
-                                                assignForm.data.user_ids.includes(user.id)
+                                                assignForm.data.user_ids.includes(String(user.id))
                                                     ? 'border-brand bg-brand/5'
                                                     : 'border-border hover:border-brand/30 hover:bg-slate-50'
                                             }`}
                                             onClick={() => toggleUserSelection(user.id)}
                                         >
                                             <Checkbox 
-                                                checked={assignForm.data.user_ids.includes(user.id)}
+                                                checked={assignForm.data.user_ids.includes(String(user.id))}
                                                 onCheckedChange={() => toggleUserSelection(user.id)}
                                             />
                                             <div className="flex flex-col">
