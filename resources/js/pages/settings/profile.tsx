@@ -1,20 +1,9 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import ProfileController from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import { Head, usePage } from '@inertiajs/react';
+import { ShieldAlert } from 'lucide-react';
 import Heading from '@/components/heading';
-import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { edit } from '@/routes/profile';
-import { send } from '@/routes/verification';
 
-export default function Profile({
-    mustVerifyEmail,
-    status,
-}: {
-    mustVerifyEmail: boolean;
-    status?: string;
-}) {
+export default function Profile() {
     const { auth } = usePage().props;
 
     return (
@@ -27,112 +16,42 @@ export default function Profile({
                 <Heading
                     variant="small"
                     title="Profile information"
-                    description="Update your name, username, and email address"
+                    description="Your account details as managed by your administrator"
                 />
 
-                <Form
-                    {...ProfileController.update.form()}
-                    options={{
-                        preserveScroll: true,
-                    }}
-                    className="space-y-6"
-                >
-                    {({ processing, errors }) => (
-                        <>
-                            <div className="grid gap-2">
-                                <Label htmlFor="name">Name</Label>
+                {/* Admin-only notice */}
+                <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-400">
+                    <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>
+                        Profile details can only be updated by an{' '}
+                        <strong>Administrator</strong>. Please contact your
+                        admin if you need to make any changes.
+                    </p>
+                </div>
 
-                                <Input
-                                    id="name"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.name}
-                                    name="name"
-                                    required
-                                    autoComplete="name"
-                                    placeholder="Full name"
-                                />
+                {/* Read-only fields */}
+                <div className="space-y-5">
+                    <div className="grid gap-1">
+                        <p className="text-sm font-medium text-foreground">Name</p>
+                        <p className="rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground select-all">
+                            {auth.user.name}
+                        </p>
+                    </div>
 
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.name}
-                                />
-                            </div>
+                    <div className="grid gap-1">
+                        <p className="text-sm font-medium text-foreground">Username</p>
+                        <p className="rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground select-all">
+                            {auth.user.username}
+                        </p>
+                    </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="username">Username</Label>
-
-                                <Input
-                                    id="username"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.username}
-                                    name="username"
-                                    required
-                                    autoComplete="username"
-                                    placeholder="Username"
-                                />
-
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.username}
-                                />
-                            </div>
-
-                            <div className="grid gap-2">
-                                <Label htmlFor="email">Email address</Label>
-
-                                <Input
-                                    id="email"
-                                    type="email"
-                                    className="mt-1 block w-full"
-                                    defaultValue={auth.user.email}
-                                    name="email"
-                                    required
-                                    autoComplete="email"
-                                    placeholder="Email address"
-                                />
-
-                                <InputError
-                                    className="mt-2"
-                                    message={errors.email}
-                                />
-                            </div>
-
-                            {mustVerifyEmail &&
-                                auth.user.email_verified_at === null && (
-                                    <div>
-                                        <p className="-mt-4 text-sm text-muted-foreground">
-                                            Your email address is unverified.{' '}
-                                            <Link
-                                                href={send()}
-                                                as="button"
-                                                className="text-foreground underline decoration-neutral-300 underline-offset-4 transition-colors duration-300 ease-out hover:decoration-current! dark:decoration-neutral-500"
-                                            >
-                                                Click here to resend the
-                                                verification email.
-                                            </Link>
-                                        </p>
-
-                                        {status ===
-                                            'verification-link-sent' && (
-                                            <div className="mt-2 text-sm font-medium text-green-600">
-                                                A new verification link has been
-                                                sent to your email address.
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-
-                            <div className="flex items-center gap-4">
-                                <Button
-                                    disabled={processing}
-                                    data-test="update-profile-button"
-                                >
-                                    Save
-                                </Button>
-                            </div>
-                        </>
-                    )}
-                </Form>
+                    <div className="grid gap-1">
+                        <p className="text-sm font-medium text-foreground">Email address</p>
+                        <p className="rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-muted-foreground select-all">
+                            {auth.user.email}
+                        </p>
+                    </div>
+                </div>
             </div>
         </>
     );
