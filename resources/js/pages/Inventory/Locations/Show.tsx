@@ -35,7 +35,7 @@ import {
     TableHeader, 
     TableRow 
 } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+// Checkbox intentionally replaced with inline visual to avoid @radix-ui/react-presence re-render loop (React error 185)
 import { StatusBadge } from '@/components/shared/status-badge';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -451,7 +451,7 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                 {filteredAssignableUsers.length > 0 ? (
                                     filteredAssignableUsers.map((user) => (
                                         <div 
-                                            key={user.id} 
+                                            key={String(user.id ?? user.email)} 
                                             className={`flex items-center gap-4 p-3 rounded-2xl border transition-all cursor-pointer ${
                                                 assignForm.data.user_ids.includes(String(user.id))
                                                     ? 'border-brand bg-brand/5'
@@ -459,13 +459,32 @@ export default function ShowLocation({ location, inventory, history, assignableU
                                             }`}
                                             onClick={() => toggleUserSelection(user.id)}
                                         >
-                                            <Checkbox 
-                                                checked={assignForm.data.user_ids.includes(String(user.id))}
-                                                onCheckedChange={() => toggleUserSelection(user.id)}
-                                            />
+                                            {/* Plain visual checkbox — avoids @radix-ui/react-presence loop */}
+                                            <div
+                                                aria-hidden
+                                                className={`shrink-0 size-4 rounded-[4px] border flex items-center justify-center transition-colors ${
+                                                    assignForm.data.user_ids.includes(String(user.id))
+                                                        ? 'bg-brand border-brand'
+                                                        : 'border-input bg-background'
+                                                }`}
+                                            >
+                                                {assignForm.data.user_ids.includes(String(user.id)) && (
+                                                    <svg
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="white"
+                                                        strokeWidth="3"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        className="size-2.5"
+                                                    >
+                                                        <polyline points="20 6 9 17 4 12" />
+                                                    </svg>
+                                                )}
+                                            </div>
                                             <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-text-primary">{user.name}</span>
-                                                <span className="text-[10px] text-text-muted font-medium">{user.email}</span>
+                                                <span className="text-sm font-bold text-text-primary">{user.name ?? '—'}</span>
+                                                <span className="text-[10px] text-text-muted font-medium">{user.email ?? '—'}</span>
                                             </div>
                                         </div>
                                     ))
