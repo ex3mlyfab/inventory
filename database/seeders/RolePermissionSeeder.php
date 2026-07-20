@@ -54,6 +54,7 @@ class RolePermissionSeeder extends Seeder
             'requisitions.approve.l1',
             'requisitions.approve.l2',
             'requisitions.cancel',
+            'requisitions.issue',
             'purchase-orders.view',
             'purchase-orders.create',
             'purchase-orders.approve.l1',
@@ -103,7 +104,7 @@ class RolePermissionSeeder extends Seeder
             'locations.manage',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
             'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
-            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel', 'requisitions.issue',
             'purchase-orders.view', 'purchase-orders.approve.l1',
             'grn.view', 'grn.create', 'grn.approve',
 
@@ -166,7 +167,7 @@ class RolePermissionSeeder extends Seeder
         $storeOfficer->syncPermissions([
             'products.view',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.view', 'requisitions.create', 'requisitions.cancel',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel', 'requisitions.issue',
             'grn.view', 'grn.create',
             'reports.view',
         ]);
@@ -216,7 +217,7 @@ class RolePermissionSeeder extends Seeder
         $storeManager->syncPermissions([
             'products.view',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.view',
+            'requisitions.view', 'requisitions.issue',
             'grn.view',
             'reports.view', 'reports.export',
             'audit-trail.view',
