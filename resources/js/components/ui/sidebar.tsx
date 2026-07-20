@@ -1,4 +1,5 @@
 import { Slot } from "@radix-ui/react-slot"
+import { router } from '@inertiajs/react';
 import type { VariantProps} from "class-variance-authority";
 import { cva } from "class-variance-authority"
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react"
@@ -177,6 +178,17 @@ function Sidebar({
   }
 
   if (isMobile) {
+    React.useEffect(() => {
+      // Close the drawer whenever Inertia begins navigation.
+      const unsubscribe = router.on('start', () => {
+        setOpenMobile(false);
+      });
+
+      return () => {
+        unsubscribe();
+      };
+    }, [setOpenMobile]);
+
     return (
       <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
         <SheetHeader className="sr-only">
