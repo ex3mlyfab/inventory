@@ -10,6 +10,7 @@ use App\Models\StockBatch;
 use App\Models\StockMovement;
 use App\Models\StorageLocation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Carbon\Carbon;
 
@@ -17,6 +18,8 @@ class DepartmentalStoreController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('stock.view');
+
         $selectedDepartmentId = $request->input('department_id');
         $productId = $request->input('product_id');
         $startDate = $request->input('start_date');

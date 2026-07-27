@@ -11,8 +11,12 @@ class TransferStockAction
     public function execute(StockBatch $sourceBatch, string $targetLocationId, int $quantity, string $performerId): void
     {
         DB::transaction(function () use ($sourceBatch, $targetLocationId, $quantity, $performerId) {
+            // Re-fetch with an exclusive row lock so two concurrent transfers
+            // cannot both read the same quantity_on_hand and both pass the
+            // sufficiency check, which would silently produce negative stock.
+            $sourceBatch = StockBatch::lockForUpdate()->findOrFail($sourceBatch->id);
             $balanceBeforeSource = $sourceBatch->quantity_on_hand;
-            $balanceAfterSource = $balanceBeforeSource - $quantity;
+            $balanceAfterSource  = $balanceBeforeSource - $quantity;
 
             if ($balanceAfterSource < 0) {
                 throw new \Exception("Insufficient stock in source batch.");

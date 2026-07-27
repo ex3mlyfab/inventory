@@ -16,7 +16,7 @@ class StorageLocationController extends Controller
 {
     public function index(Request $request)
     {
-        Gate::authorize('locations.manage');
+        Gate::authorize('locations.view');
 
         $locations = StorageLocation::with('department')->get();
         $departments = Department::all();
@@ -29,7 +29,7 @@ class StorageLocationController extends Controller
 
     public function show(StorageLocation $location)
     {
-        Gate::authorize('locations.manage');
+        Gate::authorize('locations.view');
 
         $location->load(['department', 'users']);
 
@@ -156,9 +156,20 @@ class StorageLocationController extends Controller
     {
         Gate::authorize('locations.manage');
 
-        // Check if location has stock (matching by code string since migration uses string for location)
-        if (\App\Models\StockBatch::where('location', $location->code)->count() > 0) {
-            return back()->withErrors(['error' => 'Cannot delete location with existing stock batches.']);
+        // Block deletion if the location still holds any stock.
+        // Checks the modern FK column (storage_location_id) — the source of
+        // truth for all batches created via GRN, Transfer, and Allocation.
+        $hasStock = \App\Models\StockBatch::where('storage_location_id', $location->id)
+            ->where('quantity_on_hand', '>', 0)
+            ->exists();
+
+        if ($hasStock) {
+            return back()->withErrors(['error' => 'Cannot delete a location that still holds stock. Transfer or adjust all stock to zero first.']);
+        }
+
+        // Block deletion if staff are still assigned to this location.
+        if ($location->users()->exists()) {
+            return back()->withErrors(['error' => 'Cannot delete a location with assigned users. Reassign all users first.']);
         }
 
         $location->delete();

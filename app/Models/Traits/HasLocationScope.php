@@ -20,16 +20,32 @@ trait HasLocationScope
                 return;
             }
 
-            // Super Admin can see everything
+            // Super Admin bypasses all scoping via Gate::before — nothing to do here.
             if ($user->hasRole('Super Admin')) {
                 return;
             }
 
-            // If the user is assigned to a specific location, filter by it
+            // User is assigned to a specific location: scope all queries to it.
             if ($user->storage_location_id) {
                 $column = (new static)->getTable() === 'storage_locations' ? 'id' : 'storage_location_id';
                 $builder->where($column, $user->storage_location_id);
+                return;
             }
+
+            // Unassigned user: only system-wide permission holders can see all records.
+            // Everyone else (Store Officer, Pharmacist, Location Manager without an
+            // assigned store, etc.) receives an empty result set until they are
+            // assigned to a location by a Super Admin.
+            if (
+                ! $user->hasPermissionTo('locations.view') &&
+                ! $user->hasPermissionTo('locations.manage')
+            ) {
+                $builder->whereRaw('0 = 1'); // Empty result — blocked until assigned.
+            }
+
+            // Unassigned user with location management permissions (e.g. Inventory Manager)
+            // falls through with no scope applied — they see everything.
         });
     }
 }
+

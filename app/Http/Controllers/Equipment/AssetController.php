@@ -7,12 +7,15 @@ use App\Models\Asset;
 use App\Models\Category;
 use App\Models\StorageLocation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class AssetController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('assets.view');
+
         $search = $request->input('search');
         $status = $request->input('status');
         $categoryId = $request->input('category_id');
@@ -42,6 +45,8 @@ class AssetController extends Controller
 
     public function create()
     {
+        Gate::authorize('assets.manage');
+
         return Inertia::render('Equipment/Asset/Create', [
             'categories' => Category::select('id', 'name')->get(),
             'locations' => StorageLocation::select('id', 'name')->get(),
@@ -50,6 +55,8 @@ class AssetController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('assets.manage');
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'asset_tag' => 'required|string|unique:assets,asset_tag',
@@ -73,6 +80,8 @@ class AssetController extends Controller
 
     public function show(Asset $asset)
     {
+        Gate::authorize('assets.view');
+
         return Inertia::render('Equipment/Asset/Show', [
             'asset' => $asset->load(['category', 'storageLocation', 'maintenanceLogs', 'workOrders.requester']),
         ]);

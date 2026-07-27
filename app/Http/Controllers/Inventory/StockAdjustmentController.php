@@ -92,13 +92,18 @@ class StockAdjustmentController extends Controller
 
     public function approve(StockAdjustment $adjustment, AdjustStockAction $action)
     {
-        Gate::authorize('stock.approve'); // Requires specific approval permission
+        Gate::authorize('stock.approve');
 
-        if ($adjustment->status !== 'pending') {
-            return back()->with('error', 'Only pending adjustments can be approved.');
+        // Prevent the same person who created the adjustment from approving it.
+        if ($adjustment->performed_by === auth()->id()) {
+            return back()->withErrors(['error' => 'You cannot approve your own stock adjustment. Escalate to a Store Manager.']);
         }
 
-        $action->execute($adjustment, auth()->id());
+        try {
+            $action->execute($adjustment, auth()->id());
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
         return back()->with('success', 'Stock adjustment approved and applied.');
     }

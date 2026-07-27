@@ -73,15 +73,22 @@ class StockController extends Controller
             $stats['total_value'] = (float) $baseBatchQuery->sum(DB::raw('quantity_on_hand * unit_cost'));
         }
 
-        // Low stock count (Products where scoped stock < reorder_level)
-        // This is a bit more complex, we might want to just count products
-        $stats['low_stock_count'] = Product::whereHas('stockBatches', function($q) use ($locationIds) {
-                $q->where('status', 'active');
-                if ($locationIds) $q->whereIn('storage_location_id', $locationIds);
-            })
-            ->whereRaw('(SELECT SUM(quantity_on_hand) FROM stock_batches WHERE product_id = products.id AND status = "active" ' . 
-                ($locationIds ? 'AND storage_location_id IN ("'.implode('","', $locationIds).'")' : '') . ') < products.reorder_level')
-            ->count();
+        // Low stock count — uses parameterised bindings, never string interpolation.
+        if ($locationIds) {
+            $placeholders = implode(',', array_fill(0, count($locationIds), '?'));
+            $stats['low_stock_count'] = Product::whereRaw(
+                "(SELECT COALESCE(SUM(quantity_on_hand), 0) FROM stock_batches
+                 WHERE product_id = products.id AND status = ?
+                 AND storage_location_id IN ({$placeholders})) < products.reorder_level",
+                array_merge(['active'], $locationIds)
+            )->count();
+        } else {
+            $stats['low_stock_count'] = Product::whereRaw(
+                "(SELECT COALESCE(SUM(quantity_on_hand), 0) FROM stock_batches
+                 WHERE product_id = products.id AND status = ?) < products.reorder_level",
+                ['active']
+            )->count();
+        }
 
         // Expiring Soon (within 90 days)
         $stats['expiring_soon'] = (int) $baseBatchQuery->where('expiry_date', '<=', now()->addDays(90))

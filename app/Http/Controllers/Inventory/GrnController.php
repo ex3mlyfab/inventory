@@ -14,6 +14,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class GrnController extends Controller
@@ -76,10 +77,10 @@ class GrnController extends Controller
             ->with(['supplier', 'items.product.unitOfMeasure'])
             ->get();
 
-        // Generate a unique GRN reference: GRN-YYYYMMDD-XXXX
-        $today      = now()->format('Ymd');
-        $sequence   = StockBatch::whereDate('created_at', today())->count() + 1;
-        $grnRef     = 'GRN-' . $today . '-' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+        // Generate a collision-free GRN reference using a ULID-derived suffix.
+        // A count-based sequence produces duplicates when two GRNs are created
+        // simultaneously (both reads happen before either write completes).
+        $grnRef = 'GRN-' . now()->format('Ymd') . '-' . strtoupper(substr((string) Str::ulid(), -8));
 
         return Inertia::render('Inventory/Grn/Create', [
             'suppliers'      => $suppliers,

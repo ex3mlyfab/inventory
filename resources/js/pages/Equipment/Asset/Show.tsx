@@ -2,6 +2,7 @@ import React from 'react';
 import { Head, Link } from '@inertiajs/react';
 import equipment from '@/routes/equipment';
 import { PageHeader } from '@/components/shared/page-header';
+import { Can } from '@/components/can';
 import { DataTable, Column } from '@/components/shared/data-table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,13 +76,17 @@ export default function AssetShow({ asset }: Props) {
                     description={`${asset.manufacturer || ''} ${asset.model_number || ''}`}
                 >
                     <div className="flex gap-2">
-                        <Button variant="outline" size="sm" className="h-9 font-bold text-xs uppercase tracking-widest text-slate-600">
-                            Edit Asset
-                        </Button>
-                        <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
-                            <Plus className="w-4 h-4 mr-2" />
-                            Log Service
-                        </Button>
+                        <Can permission="assets.manage">
+                            <Button variant="outline" size="sm" className="h-9 font-bold text-xs uppercase tracking-widest text-slate-600">
+                                Edit Asset
+                            </Button>
+                        </Can>
+                        <Can permission="maintenance.schedule">
+                            <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
+                                <Plus className="w-4 h-4 mr-2" />
+                                Log Service
+                            </Button>
+                        </Can>
                     </div>
                 </PageHeader>
 

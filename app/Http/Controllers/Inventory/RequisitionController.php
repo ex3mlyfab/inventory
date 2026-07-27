@@ -324,19 +324,31 @@ class RequisitionController extends Controller
         }
 
         DB::transaction(function () use ($request, $base) {
-            $req = Requisition::create([
-                'type'                     => $base['type'],
-                'reference'                => $base['reference'],
-                'requested_by'             => Auth::id(),
-                'requesting_location_id'   => $request->requesting_location_id ?? null,
-                'requesting_department_id' => $request->requesting_department_id ?? null,
-                'issuing_location_id'      => $request->issuing_location_id ?? null,
-                'supplier_id'              => $request->supplier_id ?? null,
-                'purpose'                  => $base['purpose'] ?? null,
-                'required_by'              => $base['required_by'] ?? null,
-                'notes'                    => $base['notes'] ?? null,
-                'status'                   => 'submitted',
-            ]);
+            // Race #8 — reference uniqueness TOCTOU.
+            // The unique:requisitions,reference validation ran before this
+            // transaction opened. If a concurrent request claimed the same
+            // reference between that check and this INSERT, the DB unique
+            // index will throw. Convert that to a clean validation error
+            // instead of letting an unhandled QueryException reach the user.
+            try {
+                $req = Requisition::create([
+                    'type'                     => $base['type'],
+                    'reference'                => $base['reference'],
+                    'requested_by'             => Auth::id(),
+                    'requesting_location_id'   => $request->requesting_location_id ?? null,
+                    'requesting_department_id' => $request->requesting_department_id ?? null,
+                    'issuing_location_id'      => $request->issuing_location_id ?? null,
+                    'supplier_id'              => $request->supplier_id ?? null,
+                    'purpose'                  => $base['purpose'] ?? null,
+                    'required_by'              => $base['required_by'] ?? null,
+                    'notes'                    => $base['notes'] ?? null,
+                    'status'                   => 'submitted',
+                ]);
+            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'reference' => 'This reference number has already been taken. Please use a unique reference.',
+                ]);
+            }
 
             // Determine location for auto-sync
             $syncLocationId = $request->requesting_location_id;
@@ -460,6 +472,7 @@ class RequisitionController extends Controller
     {
         Gate::authorize('requisitions.approve.l1');
 
+        // Preliminary guard (fast-fail before validation overhead)
         if (! $requisition->awaitingLevel1()) {
             return back()->withErrors(['status' => 'This requisition is not awaiting Level 1 approval.']);
         }
@@ -478,6 +491,17 @@ class RequisitionController extends Controller
         ]);
 
         DB::transaction(function () use ($requisition, $data) {
+            // Race #2 — re-fetch with a row-lock so a second concurrent approval
+            // request blocks here until this transaction commits, then re-reads
+            // the already-updated status and correctly bounces.
+            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+
+            if (! $requisition->awaitingLevel1()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'status' => 'This requisition is not awaiting Level 1 approval.',
+                ]);
+            }
+
             foreach ($data['items'] as $itemData) {
                 $requisition->items()->findOrFail($itemData['id'])
                             ->update([
@@ -504,6 +528,7 @@ class RequisitionController extends Controller
     {
         Gate::authorize('requisitions.approve.l2');
 
+        // Preliminary guard (fast-fail before validation overhead)
         if (! $requisition->awaitingLevel2()) {
             return back()->withErrors(['status' => 'This requisition is not awaiting Level 2 (Medical Director) approval.']);
         }
@@ -522,6 +547,17 @@ class RequisitionController extends Controller
         ]);
 
         DB::transaction(function () use ($requisition, $data) {
+            // Race #3 — re-fetch with a row-lock so a second concurrent approval
+            // request blocks here until this transaction commits, then re-reads
+            // the already-updated status and correctly bounces.
+            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+
+            if (! $requisition->awaitingLevel2()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'status' => 'This requisition is not awaiting Level 2 (Medical Director) approval.',
+                ]);
+            }
+
             foreach ($data['items'] as $itemData) {
                 $requisition->items()->findOrFail($itemData['id'])
                             ->update([
@@ -549,6 +585,7 @@ class RequisitionController extends Controller
     {
         $user = Auth::user();
 
+        // Preliminary guard (fast-fail before validation overhead)
         $canReject = ($requisition->awaitingLevel1() && $requisition->isExpectedLevel1Approver($user))
                   || ($requisition->awaitingLevel2() && $requisition->isExpectedLevel2Approver($user));
 
@@ -560,11 +597,24 @@ class RequisitionController extends Controller
             'notes' => ['required', 'string', 'max:500'],
         ]);
 
-        $requisition->update([
-            'status'      => 'rejected',
-            'approved_by' => $user->id,
-            'notes'       => $data['notes'],
-        ]);
+        // Race #4 — wrap in a transaction and re-assert eligibility under a
+        // row-lock so two concurrent reject requests cannot both succeed.
+        DB::transaction(function () use ($requisition, $data, $user) {
+            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+
+            $canReject = ($requisition->awaitingLevel1() && $requisition->isExpectedLevel1Approver($user))
+                      || ($requisition->awaitingLevel2() && $requisition->isExpectedLevel2Approver($user));
+
+            if (! $canReject) {
+                abort(403, 'You are not authorised to reject this requisition at its current stage.');
+            }
+
+            $requisition->update([
+                'status'      => 'rejected',
+                'approved_by' => $user->id,
+                'notes'       => $data['notes'],
+            ]);
+        });
 
         return back()->with('success', 'Requisition rejected.');
     }
@@ -579,11 +629,24 @@ class RequisitionController extends Controller
             abort(403, 'You can only cancel your own requisitions.');
         }
 
+        // Preliminary guard (fast-fail)
         if (! $requisition->isPending()) {
             return back()->withErrors(['status' => 'Only pending requisitions can be cancelled.']);
         }
 
-        $requisition->update(['status' => 'cancelled']);
+        // Race #5 — wrap in a transaction with a row-lock so two concurrent
+        // cancel requests cannot both pass the isPending() check.
+        DB::transaction(function () use ($requisition) {
+            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+
+            if (! $requisition->isPending()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'status' => 'Only pending requisitions can be cancelled.',
+                ]);
+            }
+
+            $requisition->update(['status' => 'cancelled']);
+        });
 
         return back()->with('success', 'Requisition cancelled.');
     }
@@ -693,11 +756,22 @@ class RequisitionController extends Controller
             abort(403, 'Only the requester or the Department Head can confirm receipt.');
         }
 
+        // Preliminary guard (fast-fail before opening a transaction)
         if (!in_array($requisition->status, ['issued', 'in_transit'])) {
             return back()->with('error', 'Only issued or in-transit requisitions can be marked as received.');
         }
 
         DB::transaction(function () use ($requisition) {
+            // Race #6 — re-fetch the requisition with a row-lock and re-assert
+            // the status guard inside the transaction. Without this, two
+            // concurrent receive requests both pass the guard above and both
+            // execute, crediting stock twice.
+            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+
+            if (!in_array($requisition->status, ['issued', 'in_transit'])) {
+                throw new \Exception('Only issued or in-transit requisitions can be marked as received.');
+            }
+
             // Identify target location for receiving
             $locationId = $requisition->requesting_location_id;
             if ($requisition->type === 'departmental' && !$locationId) {
@@ -735,7 +809,10 @@ class RequisitionController extends Controller
                 $sourceBatch = $outflow->batch;
                 $qty = abs($outflow->quantity);
 
-                $targetBatch = \App\Models\StockBatch::firstOrCreate(
+                // Race #6 (cont.) — lock the target batch row before the
+                // read-modify-write so concurrent receives cannot both read
+                // the same balance_before and double-credit the quantity.
+                $targetBatch = \App\Models\StockBatch::lockForUpdate()->firstOrCreate(
                     [
                         'storage_location_id' => $locationId,
                         'product_id'          => $sourceBatch->product_id,
@@ -783,7 +860,12 @@ class RequisitionController extends Controller
      */
     private function syncReportedStock(string $locationId, string $productId, int $reportedQty): int
     {
-        $batches = \App\Models\StockBatch::where('storage_location_id', $locationId)
+        // Race #7 — this method is always called from inside a DB::transaction.
+        // Lock the matching batch rows before reading so that two concurrent
+        // store() calls for the same location+product cannot both read the same
+        // quantity_on_hand and overwrite each other's adjustment.
+        $batches = \App\Models\StockBatch::lockForUpdate()
+            ->where('storage_location_id', $locationId)
             ->where('product_id', $productId)
             ->where('status', 'active')
             ->get();

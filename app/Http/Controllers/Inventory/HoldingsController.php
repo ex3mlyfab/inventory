@@ -7,7 +7,9 @@ use App\Models\Product;
 use App\Models\StorageLocation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
+
 
 class HoldingsController extends Controller
 {
@@ -16,7 +18,9 @@ class HoldingsController extends Controller
      */
     public function index(Request $request)
     {
-        $user = Auth::user();
+        Gate::authorize('stock.view');
+
+        $user   = Auth::user();
         $search = $request->input('search');
 
         // Identify the locations assigned to this user's department
@@ -63,14 +67,15 @@ class HoldingsController extends Controller
         $baseBatchQuery = \App\Models\StockBatch::where('status', 'active')
             ->whereIn('storage_location_id', $locationIds);
 
+        $placeholders = implode(',', array_fill(0, count($locationIds), '?'));
         $stats = [
             'total_items' => (int) $baseBatchQuery->sum('quantity_on_hand'),
-            'low_stock_count' => Product::whereHas('stockBatches', function($q) use ($locationIds) {
-                    $q->where('status', 'active')
-                      ->whereIn('storage_location_id', $locationIds);
-                })
-                ->whereRaw('(SELECT SUM(quantity_on_hand) FROM stock_batches WHERE product_id = products.id AND status = "active" AND storage_location_id IN ("'.implode('","', $locationIds).'") ) < products.reorder_level')
-                ->count(),
+            'low_stock_count' => Product::whereRaw(
+                "(SELECT COALESCE(SUM(quantity_on_hand), 0) FROM stock_batches
+                 WHERE product_id = products.id AND status = ?
+                 AND storage_location_id IN ({$placeholders})) < products.reorder_level",
+                array_merge(['active'], $locationIds)
+            )->count(),
         ];
 
         return Inertia::render('Inventory/Holdings/Index', [
@@ -84,6 +89,8 @@ class HoldingsController extends Controller
 
     public function show(Request $request, Product $product)
     {
+        Gate::authorize('stock.view');
+
         $user = Auth::user();
         
         $locationIds = [];

@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\WorkOrder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class WorkOrderController extends Controller
 {
     public function index(Request $request)
     {
+        Gate::authorize('work-orders.manage');
+
         $status = $request->input('status');
         $priority = $request->input('priority');
 
@@ -33,6 +36,8 @@ class WorkOrderController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('work-orders.manage');
+
         $validated = $request->validate([
             'asset_id' => 'required|exists:assets,id',
             'priority' => 'required|in:low,medium,high,urgent',

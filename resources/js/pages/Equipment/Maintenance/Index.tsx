@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
+import { Can } from '@/components/can';
 import { DataTable, Column } from '@/components/shared/data-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -113,10 +114,12 @@ export default function MaintenanceIndex({ logs, filters, isCalibrationPage }: P
                         title={pageTitle} 
                         description={pageDescription}
                     >
-                        <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
-                            <Plus className="w-4 h-4 mr-2" />
-                            {isCalibrationPage ? 'Log Calibration' : 'Log Service'}
-                        </Button>
+                        <Can permission={isCalibrationPage ? 'calibration.manage' : 'maintenance.schedule'}>
+                            <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
+                                <Plus className="w-4 h-4 mr-2" />
+                                {isCalibrationPage ? 'Log Calibration' : 'Log Service'}
+                            </Button>
+                        </Can>
                     </PageHeader>
 
                     {/* Stats Dashboard */}

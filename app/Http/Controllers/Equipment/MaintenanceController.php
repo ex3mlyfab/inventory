@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\AssetMaintenanceLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 
 class MaintenanceController extends Controller
@@ -17,7 +18,10 @@ class MaintenanceController extends Controller
 
         // If accessed via calibration route, force type to calibration
         if ($request->routeIs('equipment.calibration.index')) {
+            Gate::authorize('calibration.manage');
             $type = 'calibration';
+        } else {
+            Gate::authorize('maintenance.view');
         }
 
         $query = AssetMaintenanceLog::with(['asset'])
@@ -42,6 +46,8 @@ class MaintenanceController extends Controller
 
     public function store(Request $request)
     {
+        Gate::authorize('maintenance.schedule');
+
         $validated = $request->validate([
             'asset_id' => 'required|exists:assets,id',
             'type' => 'required|in:routine,repair,calibration,upgrade,inspection',

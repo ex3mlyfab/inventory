@@ -1,6 +1,7 @@
 import React from 'react';
 import { Head, Link, router } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
+import { Can } from '@/components/can';
 import { DataTable, Column } from '@/components/shared/data-table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -88,9 +89,11 @@ export default function WorkOrderIndex({ workOrders, filters }: Props) {
             className: 'text-right pr-4',
             cell: (wo) => (
                 <div className="flex justify-end pr-4">
-                    <Button variant="ghost" size="sm" className="h-8 font-bold text-xs uppercase tracking-wider text-brand">
-                        Update
-                    </Button>
+                    <Can permission="work-orders.manage">
+                        <Button variant="ghost" size="sm" className="h-8 font-bold text-xs uppercase tracking-wider text-brand">
+                            Update
+                        </Button>
+                    </Can>
                 </div>
             )
         }
@@ -106,10 +109,12 @@ export default function WorkOrderIndex({ workOrders, filters }: Props) {
                         title="Maintenance Work Orders" 
                         description="Repair requests, technical issues, and facility maintenance tickets."
                     >
-                        <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
-                            <Plus className="w-4 h-4 mr-2" />
-                            New Request
-                        </Button>
+                        <Can permission="work-orders.manage">
+                            <Button size="sm" className="bg-brand hover:bg-brand-dark text-white h-9 shadow-md transition-all active:scale-95">
+                                <Plus className="w-4 h-4 mr-2" />
+                                New Request
+                            </Button>
+                        </Can>
                     </PageHeader>
 
                     {/* Kanban-style Summary */}

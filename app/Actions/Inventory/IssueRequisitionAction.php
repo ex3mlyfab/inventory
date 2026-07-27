@@ -19,7 +19,10 @@ class IssueRequisitionAction
         DB::transaction(function () use ($requisition, $issuances, $performerId) {
             foreach ($issuances as $issuance) {
                 $reqItem = RequisitionItem::findOrFail($issuance['requisition_item_id']);
-                $sourceBatch = StockBatch::findOrFail($issuance['stock_batch_id']);
+                // Lock the batch row for the duration of the transaction so that
+                // two concurrent issue requests cannot both read the same
+                // quantity_on_hand and both pass the sufficiency check.
+                $sourceBatch = StockBatch::lockForUpdate()->findOrFail($issuance['stock_batch_id']);
                 $qty = $issuance['quantity'];
 
                 if ($sourceBatch->quantity_on_hand < $qty) {

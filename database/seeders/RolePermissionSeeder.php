@@ -33,12 +33,13 @@ class RolePermissionSeeder extends Seeder
             'units.create',
             'units.edit',
             'units.delete',
+            'locations.view',
             'locations.manage',
 
-            // Stock & Inventory
             'stock.view',
             'stock.allocate',
             'stock.adjust',
+            'stock.approve',
             'stock.transfer',
             'stock.count',
             'stock.movements.view',
@@ -101,8 +102,8 @@ class RolePermissionSeeder extends Seeder
             'products.view', 'products.create', 'products.edit', 'products.delete',
             'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
             'units.view', 'units.create', 'units.edit', 'units.delete',
-            'locations.manage',
-            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+            'locations.view', 'locations.manage',
+            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.approve', 'stock.transfer', 'stock.count', 'stock.movements.view',
             'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
             'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel', 'requisitions.issue',
             'purchase-orders.view', 'purchase-orders.approve.l1',
@@ -118,6 +119,7 @@ class RolePermissionSeeder extends Seeder
         $procurementOfficer = Role::firstOrCreate(['name' => 'Procurement Officer', 'guard_name' => 'web']);
         $procurementOfficer->syncPermissions([
             'products.view',
+            'locations.view',
             'stock.view', 'stock.movements.view',
             'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.manage',
             'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
@@ -131,6 +133,7 @@ class RolePermissionSeeder extends Seeder
         $procurementSupervisor = Role::firstOrCreate(['name' => 'Procurement Supervisor', 'guard_name' => 'web']);
         $procurementSupervisor->syncPermissions([
             'products.view',
+            'locations.view',
             'stock.view', 'stock.movements.view',
             'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.manage',
             'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
@@ -187,6 +190,7 @@ class RolePermissionSeeder extends Seeder
         $auditor = Role::firstOrCreate(['name' => 'Auditor', 'guard_name' => 'web']);
         $auditor->syncPermissions([
             'products.view',
+            'locations.view',
             'stock.view', 'stock.movements.view',
             'requisitions.view',
             'suppliers.view',
@@ -203,6 +207,7 @@ class RolePermissionSeeder extends Seeder
         $medicalDirector = Role::firstOrCreate(['name' => 'Medical Director', 'guard_name' => 'web']);
         $medicalDirector->syncPermissions([
             'products.view',
+            'locations.view',
             'stock.view', 'stock.movements.view',
             'requisitions.view', 'requisitions.approve.l2',
             'suppliers.view',
@@ -216,11 +221,33 @@ class RolePermissionSeeder extends Seeder
         $storeManager = Role::firstOrCreate(['name' => 'Store Manager', 'guard_name' => 'web']);
         $storeManager->syncPermissions([
             'products.view',
-            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+            'locations.view',
+            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.approve', 'stock.transfer', 'stock.count', 'stock.movements.view',
             'requisitions.view', 'requisitions.issue',
             'grn.view',
             'reports.view', 'reports.export',
             'audit-trail.view',
+        ]);
+
+        // 11. Location Manager — operates a single assigned store.
+        // Approvals escalate to Store Manager; no system-wide location management.
+        $locationManager = Role::firstOrCreate(['name' => 'Location Manager', 'guard_name' => 'web']);
+        $locationManager->syncPermissions([
+            'products.view',
+            'locations.view',             // Sees own location (scoped by HasLocationScope)
+            'stock.view',
+            'stock.allocate',
+            'stock.adjust',
+            'stock.transfer',
+            'stock.count',
+            'stock.movements.view',
+            'requisitions.view',
+            'requisitions.create',
+            'requisitions.cancel',
+            'requisitions.issue',
+            'grn.view',
+            'grn.create',
+            'reports.view',
         ]);
     }
 }

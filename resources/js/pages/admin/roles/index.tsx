@@ -1,5 +1,5 @@
 import React, { useState, Fragment } from 'react';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatusBadge } from '@/components/shared/status-badge';
@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { Permission, Role } from '@/types';
-import { Shield, ShieldCheck, Plus, Save } from 'lucide-react';
+import { Shield, ShieldCheck, Plus, Save, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Props {
@@ -46,9 +46,32 @@ const moduleLabels: Record<string, string> = {
     'audit-trail': 'Audit Trail',
 };
 
+const CORE_PERMISSIONS = new Set([
+    'products.view', 'products.create', 'products.edit', 'products.delete',
+    'categories.view', 'categories.create', 'categories.edit', 'categories.delete',
+    'units.view', 'units.create', 'units.edit', 'units.delete',
+    'locations.manage',
+    'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+    'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.manage',
+    'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.approve.l2', 'requisitions.cancel', 'requisitions.issue',
+    'purchase-orders.view', 'purchase-orders.create', 'purchase-orders.approve.l1', 'purchase-orders.approve.l2',
+    'grn.view', 'grn.create', 'grn.approve',
+    'assets.view', 'assets.manage',
+    'maintenance.schedule', 'maintenance.view',
+    'work-orders.manage',
+    'calibration.manage',
+    'users.manage', 'roles.manage', 'settings.manage', 'departments.manage',
+    'reports.view', 'reports.export', 'audit-trail.view'
+]);
+
 export default function RolesIndex({ roles, permissionGroups }: Props) {
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [isCreatePermissionOpen, setIsCreatePermissionOpen] = useState(false);
     const { data, setData, post, processing, reset, errors } = useForm({
+        name: '',
+    });
+
+    const permissionForm = useForm({
         name: '',
     });
 
@@ -63,6 +86,34 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
         });
     }
 
+    function handleCreatePermission(e: React.FormEvent) {
+        e.preventDefault();
+        permissionForm.post('/admin/permissions', {
+            onSuccess: () => {
+                setIsCreatePermissionOpen(false);
+                permissionForm.reset();
+                toast.success('New permission created successfully');
+            },
+        });
+    }
+
+    function handleDeletePermission(id: string, name: string) {
+        if (confirm(`Are you sure you want to delete the permission "${name}"? This action cannot be undone.`)) {
+            router.delete(`/admin/permissions/${id}`, {
+                onSuccess: () => {
+                    toast.success('Permission deleted successfully');
+                },
+                onError: (errs: any) => {
+                    if (errs.error) {
+                        toast.error(errs.error);
+                    } else {
+                        toast.error('Failed to delete permission');
+                    }
+                }
+            });
+        }
+    }
+
     return (
         <>
             <Head title="Roles & Permissions" />
@@ -72,53 +123,103 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                     description="View and manage role-based access control for the inventory system."
                     actions={
                         <Can permission="roles.manage">
-                            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-                                <DialogTrigger asChild>
-                                    <Button className="bg-[#008060] hover:bg-[#006e52]">
-                                        <Plus className="mr-2 h-4 w-4" />
-                                        Create New Role
-                                    </Button>
-                                </DialogTrigger>
-                                <DialogContent className="sm:max-w-[425px]">
-                                    <form onSubmit={handleCreateRole}>
-                                        <DialogHeader>
-                                            <DialogTitle>Create New Role</DialogTitle>
-                                            <DialogDescription>
-                                                Enter a unique name for the new administrative role.
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="grid gap-4 py-4">
-                                            <div className="grid gap-2">
-                                                <Label htmlFor="name">Role Name</Label>
-                                                <Input
-                                                    id="name"
-                                                    value={data.name}
-                                                    onChange={(e) => setData('name', e.target.value)}
-                                                    placeholder="e.g. Finance Manager"
-                                                    className={errors.name ? 'border-red-500' : ''}
-                                                />
-                                                {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                            <div className="flex gap-3">
+                                <Dialog open={isCreatePermissionOpen} onOpenChange={setIsCreatePermissionOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline" className="border-[#babfc3] text-[#1a1c1d] hover:bg-gray-50">
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Create New Permission
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <form onSubmit={handleCreatePermission}>
+                                            <DialogHeader>
+                                                <DialogTitle>Create New Permission</DialogTitle>
+                                                <DialogDescription>
+                                                    Enter a unique name for the new permission. Use dot notation (e.g. <code>reports.publish</code>) to group it under a module.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="perm-name">Permission Name</Label>
+                                                    <Input
+                                                        id="perm-name"
+                                                        value={permissionForm.data.name}
+                                                        onChange={(e) => permissionForm.setData('name', e.target.value)}
+                                                        placeholder="e.g. reports.publish"
+                                                        className={permissionForm.errors.name ? 'border-red-500' : ''}
+                                                    />
+                                                    {permissionForm.errors.name && <p className="text-xs text-red-500">{permissionForm.errors.name}</p>}
+                                                </div>
                                             </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button 
-                                                type="button" 
-                                                variant="outline" 
-                                                onClick={() => setIsCreateOpen(false)}
-                                            >
-                                                Cancel
-                                            </Button>
-                                            <Button 
-                                                type="submit" 
-                                                className="bg-[#008060] hover:bg-[#006e52]"
-                                                disabled={processing}
-                                            >
-                                                {processing ? 'Creating...' : 'Create Role'}
-                                            </Button>
-                                        </DialogFooter>
-                                    </form>
-                                </DialogContent>
-                            </Dialog>
+                                            <DialogFooter>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    onClick={() => setIsCreatePermissionOpen(false)}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button 
+                                                    type="submit" 
+                                                    className="bg-[#008060] hover:bg-[#006e52]"
+                                                    disabled={permissionForm.processing}
+                                                >
+                                                    {permissionForm.processing ? 'Creating...' : 'Create Permission'}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+
+                                <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button className="bg-[#008060] hover:bg-[#006e52]">
+                                            <Plus className="mr-2 h-4 w-4" />
+                                            Create New Role
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <form onSubmit={handleCreateRole}>
+                                            <DialogHeader>
+                                                <DialogTitle>Create New Role</DialogTitle>
+                                                <DialogDescription>
+                                                    Enter a unique name for the new administrative role.
+                                                </DialogDescription>
+                                            </DialogHeader>
+                                            <div className="grid gap-4 py-4">
+                                                <div className="grid gap-2">
+                                                    <Label htmlFor="name">Role Name</Label>
+                                                    <Input
+                                                        id="name"
+                                                        value={data.name}
+                                                        onChange={(e) => setData('name', e.target.value)}
+                                                        placeholder="e.g. Finance Manager"
+                                                        className={errors.name ? 'border-red-500' : ''}
+                                                    />
+                                                    {errors.name && <p className="text-xs text-red-500">{errors.name}</p>}
+                                                </div>
+                                            </div>
+                                            <DialogFooter>
+                                                <Button 
+                                                    type="button" 
+                                                    variant="outline" 
+                                                    onClick={() => setIsCreateOpen(false)}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                                <Button 
+                                                    type="submit" 
+                                                    className="bg-[#008060] hover:bg-[#006e52]"
+                                                    disabled={processing}
+                                                >
+                                                    {processing ? 'Creating...' : 'Create Role'}
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
                         </Can>
                     }
                 />
@@ -193,8 +294,24 @@ export default function RolesIndex({ roles, permissionGroups }: Props) {
                                             </td>
                                         </tr>
                                         {permissions.map((perm) => (
-                                            <tr key={perm.id} className="border-b border-[#E1E3E5] hover:bg-[#f6fbf6]">
-                                                <td className="p-3 pl-6 text-sm text-[#6D7175]">{perm.name}</td>
+                                            <tr key={perm.id} className="group/row border-b border-[#E1E3E5] hover:bg-[#f6fbf6]">
+                                                <td className="p-3 pl-6 text-sm text-[#6D7175]">
+                                                    <div className="flex items-center justify-between">
+                                                        <span>{perm.name}</span>
+                                                        <Can permission="roles.manage">
+                                                            {!CORE_PERMISSIONS.has(perm.name) && (
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => handleDeletePermission(perm.id, perm.name)}
+                                                                    className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 hover:text-red-700 opacity-0 group-hover/row:opacity-100 transition-opacity"
+                                                                >
+                                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                                </Button>
+                                                            )}
+                                                        </Can>
+                                                    </div>
+                                                </td>
                                                 {roles.filter((r) => r.name !== 'Super Admin').map((role) => (
                                                     <td key={role.id} className="p-3 text-center">
                                                         {role.permissions?.some((p) => p.name === perm.name) ? (
