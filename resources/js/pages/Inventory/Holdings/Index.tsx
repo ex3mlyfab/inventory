@@ -154,7 +154,7 @@ export default function HoldingsIndex({
                     </CardContent>
                 </Card>
 
-                <div className="bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden shadow-slate-200/50">
+                <div className="bg-transparent border-none shadow-none overflow-visible">
                     <DataTable 
                         columns={columns}
                         data={products.data}
@@ -162,6 +162,34 @@ export default function HoldingsIndex({
                         keyExtractor={(p) => p.id}
                         emptyMessage="Your department has no recorded stock yet."
                         headerBackground="bg-slate-50/50"
+                        mobileRender={(product) => (
+                            <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-4 hover:shadow-md transition-all duration-200">
+                                <div className="flex items-start justify-between gap-3">
+                                    <div className="flex flex-col min-w-0 flex-1">
+                                        <span className="text-sm font-bold text-slate-900 truncate">{product.name}</span>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                {product.sku}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 font-medium">
+                                                {product.category?.name}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-3 flex items-center justify-between pt-2 border-t border-border/30">
+                                    <div className="flex items-baseline gap-1.5">
+                                        <span className="text-sm font-black text-slate-900">{product.current_stock ?? 0}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{product.unit_of_measure?.abbreviation || 'Units'}</span>
+                                    </div>
+                                    <Link href={`/inventory/holdings/${product.id}`}>
+                                        <Button variant="outline" size="sm" className="h-8 text-slate-600 hover:text-brand hover:bg-brand/5 font-bold text-xs uppercase tracking-wider">
+                                            Details
+                                        </Button>
+                                    </Link>
+                                </div>
+                            </div>
+                        )}
                     />
                 </div>
             </div>

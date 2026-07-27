@@ -17,6 +17,9 @@ class IssueRequisitionAction
     public function execute(Requisition $requisition, array $issuances, string $performerId): void
     {
         DB::transaction(function () use ($requisition, $issuances, $performerId) {
+            // Lock the requisition to prevent concurrent issuance
+            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+
             foreach ($issuances as $issuance) {
                 $reqItem = RequisitionItem::findOrFail($issuance['requisition_item_id']);
                 // Lock the batch row for the duration of the transaction so that

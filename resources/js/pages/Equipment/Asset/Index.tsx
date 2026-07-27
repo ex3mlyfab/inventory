@@ -236,7 +236,7 @@ export default function AssetIndex({ assets, categories, locations, filters }: P
                         </CardContent>
                     </Card>
 
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-xl overflow-hidden shadow-slate-200/50">
+                    <div className="bg-transparent border-none shadow-none overflow-visible">
                         <DataTable 
                             columns={columns}
                             data={assets.data}
@@ -244,6 +244,44 @@ export default function AssetIndex({ assets, categories, locations, filters }: P
                             keyExtractor={(a) => a.id}
                             emptyMessage="No equipment found matching the criteria."
                             headerBackground="bg-slate-50/50"
+                            mobileRender={(asset) => (
+                                <div className="bg-white rounded-2xl border border-border/50 shadow-sm p-4 hover:shadow-md transition-all duration-200">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex flex-col min-w-0 flex-1">
+                                            <span className="text-sm font-bold text-slate-900 truncate">{asset.name}</span>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                    {asset.asset_tag}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 font-medium">
+                                                    {asset.category?.name}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <Badge variant="outline" className={cn("uppercase text-[9px] font-black tracking-widest px-2 py-0.5 shrink-0", statusColors[asset.status as keyof typeof statusColors])}>
+                                            {asset.status.replace('_', ' ')}
+                                        </Badge>
+                                    </div>
+                                    <div className="mt-3 grid grid-cols-2 gap-2 pt-2 border-t border-border/30 text-xs">
+                                        <div>
+                                            <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Manufacturer/Model</span>
+                                            <span className="text-slate-700 font-semibold">{asset.manufacturer || 'N/A'}</span>
+                                            <span className="text-slate-400 text-[10px] block font-mono">{asset.model_number || 'No Model'}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wider">Location</span>
+                                            <span className="text-slate-700 font-semibold">{asset.storage_location?.name || 'Unassigned'}</span>
+                                        </div>
+                                    </div>
+                                    <div className="mt-3 pt-2 border-t border-border/30 flex justify-end">
+                                        <Link href={equipment.assets.show(asset.id).url} className="w-full">
+                                            <Button variant="outline" size="sm" className="w-full h-8 text-slate-600 hover:text-brand hover:bg-brand/5 font-bold text-xs uppercase tracking-wider">
+                                                Manage Asset
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                            )}
                         />
                     </div>
                 </div>

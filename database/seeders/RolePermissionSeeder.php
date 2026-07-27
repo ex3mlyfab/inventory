@@ -175,6 +175,16 @@ class RolePermissionSeeder extends Seeder
             'reports.view',
         ]);
 
+        // 6b. Main Store Officer (operates similar to Store Officer but specifically for main stores)
+        $mainStoreOfficer = Role::firstOrCreate(['name' => 'Main Store Officer', 'guard_name' => 'web']);
+        $mainStoreOfficer->syncPermissions([
+            'products.view',
+            'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel', 'requisitions.issue',
+            'grn.view', 'grn.create',
+            'reports.view',
+        ]);
+
         // 7. Biomedical Engineer
         $biomedicalEngineer = Role::firstOrCreate(['name' => 'Biomedical Engineer', 'guard_name' => 'web']);
         $biomedicalEngineer->syncPermissions([

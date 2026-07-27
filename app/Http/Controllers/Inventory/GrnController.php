@@ -155,7 +155,7 @@ class GrnController extends Controller
 
             // 4. Update parent Requisition status
             if (!empty($validated['requisition_id'])) {
-                $requisition = Requisition::with('items')->find($validated['requisition_id']);
+                $requisition = Requisition::with('items')->lockForUpdate()->find($validated['requisition_id']);
                 if ($requisition) {
                     $allReceived = $requisition->items->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
                     

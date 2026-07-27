@@ -80,22 +80,39 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
             )
         },
         {
-            header: 'Route / Supplier',
-            cell: (req) => (
-                req.type === 'internal' ? (
-                    <div className="flex items-center gap-1.5 text-text-secondary">
-                        <span className="truncate font-semibold text-[11px] bg-muted/50 px-1.5 py-0.5 rounded" title={req.requesting_location?.name}>
-                            {req.requesting_location?.name ?? '—'}
+            header: 'Fulfillment / Route',
+            cell: (req) => {
+                if (req.type === 'purchase') {
+                    return (
+                        <div className="flex items-center gap-1.5 text-text-secondary">
+                            <ShoppingCart className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                            <span className="text-[11px] font-medium truncate" title={req.supplier?.name}>
+                                {req.supplier?.name ?? <em className="text-text-muted italic font-normal">No Supplier</em>}
+                            </span>
+                        </div>
+                    );
+                }
+
+                const sourceName = req.type === 'departmental' 
+                    ? (req.requesting_department?.name || req.requesting_location?.department?.name || req.requester?.department?.name || 'Department')
+                    : (req.requesting_location?.name || 'Store');
+
+                const sourceStyle = req.type === 'departmental'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                    : 'bg-slate-100 text-slate-700 border border-slate-200';
+
+                return (
+                    <div className="flex items-center gap-1.5 text-text-secondary flex-wrap min-w-[150px]">
+                        <span className={`truncate font-bold text-[10px] px-1.5 py-0.5 rounded max-w-[120px] ${sourceStyle}`} title={sourceName}>
+                            {sourceName}
                         </span>
-                        <ArrowRightLeft className="h-3 w-3 text-text-muted shrink-0" />
-                        <span className="truncate text-[11px] bg-muted/20 px-1.5 py-0.5 rounded" title={req.issuing_location?.name}>
-                            {req.issuing_location?.name ?? '—'}
+                        <ArrowRightLeft className="h-3 w-3 text-text-muted/50 shrink-0" />
+                        <span className="truncate font-bold text-[10px] bg-brand/10 text-brand border border-brand/20 px-1.5 py-0.5 rounded max-w-[120px]" title={req.issuing_location?.name}>
+                            {req.issuing_location?.name ?? 'Main Store'}
                         </span>
                     </div>
-                ) : (
-                    <span className="text-xs text-text-secondary font-medium">{req.supplier?.name ?? <em className="text-text-muted italic font-normal">Preferred Supplier: None</em>}</span>
-                )
-            )
+                );
+            }
         },
         {
             header: 'Requester',
@@ -278,9 +295,13 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Types</SelectItem>
-                            <SelectItem value="internal">Internal Transfer</SelectItem>
+                            {user.role !== 'Ward/Dept Head' && (
+                                <>
+                                    <SelectItem value="internal">Internal Transfer</SelectItem>
+                                    <SelectItem value="purchase">Purchase Request</SelectItem>
+                                </>
+                            )}
                             <SelectItem value="departmental">Departmental Issue</SelectItem>
-                            <SelectItem value="purchase">Purchase Request</SelectItem>
                         </SelectContent>
                     </Select>
 

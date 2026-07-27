@@ -243,17 +243,17 @@ export default function Dashboard({
                             <div className="divide-y divide-[#E1E3E5]">
                                 {recentActivity.length > 0 ? (
                                     recentActivity.map((activity) => (
-                                        <div key={activity.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${activity.type === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                                        <div key={activity.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 hover:bg-gray-50 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                                                <div className={`p-2 rounded-lg shrink-0 ${activity.type === 'in' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                                                     {activity.type === 'in' ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
                                                 </div>
-                                                <div>
-                                                    <p className="text-sm font-medium text-gray-900">{activity.product_name}</p>
-                                                    <p className="text-xs text-gray-500">{activity.user_name} • {activity.reference || 'No Reference'}</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">{activity.product_name}</p>
+                                                    <p className="text-xs text-gray-500 truncate">{activity.user_name} • {activity.reference || 'No Reference'}</p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
+                                            <div className="text-left sm:text-right pl-11 sm:pl-0 shrink-0">
                                                 <p className={`text-sm font-bold ${activity.type === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
                                                     {activity.type === 'in' ? '+' : '-'}{activity.quantity}
                                                 </p>

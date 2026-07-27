@@ -68,7 +68,7 @@ class InitialAllocationController extends Controller
                 // 1. Create or Find Batch
                 // For initial allocation, we usually create NEW batches even if same number exists, 
                 // but checking for existing in THIS location is safer.
-                $batch = StockBatch::firstOrCreate(
+                $batch = StockBatch::lockForUpdate()->firstOrCreate(
                     [
                         'storage_location_id' => $request->storage_location_id,
                         'product_id' => $item['product_id'],

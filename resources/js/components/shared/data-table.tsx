@@ -41,6 +41,7 @@ interface DataTableProps<T> {
     emptyMessage?: string | ReactNode;
     onRowClick?: (item: T) => void;
     className?: string;
+    mobileRender?: (item: T) => ReactNode;
 }
 
 export function DataTable<T>({
@@ -52,10 +53,14 @@ export function DataTable<T>({
     emptyMessage = 'No results found.',
     onRowClick,
     className,
+    mobileRender,
 }: DataTableProps<T>) {
     return (
-        <div className={cn('flex flex-col w-full', className)}>
-            <div className="rounded-md border border-border bg-white shadow-sm overflow-hidden">
+        <div className={cn('flex flex-col w-full gap-4', className)}>
+            <div className={cn(
+                "rounded-md border border-border bg-white shadow-sm overflow-hidden",
+                mobileRender && "hidden md:block"
+            )}>
                 <Table>
                     <TableHeader className={cn('bg-surface-header', headerBackground)}>
                         <TableRow>
@@ -110,6 +115,22 @@ export function DataTable<T>({
                     </TableBody>
                 </Table>
             </div>
+
+            {mobileRender && (
+                <div className="md:hidden flex flex-col gap-3">
+                    {data.length === 0 ? (
+                        <div className="rounded-md border border-border bg-white p-6 text-center text-text-muted">
+                            {emptyMessage}
+                        </div>
+                    ) : (
+                        data.map((item) => (
+                            <div key={keyExtractor(item)} onClick={() => onRowClick?.(item)} className={cn(onRowClick && 'cursor-pointer')}>
+                                {mobileRender(item)}
+                            </div>
+                        ))
+                    )}
+                </div>
+            )}
 
             {/* Pagination Controls */}
             {meta && meta.last_page > 1 && (

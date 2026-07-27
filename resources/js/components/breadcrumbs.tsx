@@ -25,7 +25,7 @@ export function Breadcrumbs({
 
                             return (
                                 <Fragment key={index}>
-                                    <BreadcrumbItem>
+                                    <BreadcrumbItem className={isLast ? "" : "hidden sm:inline-flex"}>
                                         {isLast ? (
                                             <BreadcrumbPage>
                                                 {item.title}
@@ -38,7 +38,7 @@ export function Breadcrumbs({
                                             </BreadcrumbLink>
                                         )}
                                     </BreadcrumbItem>
-                                    {!isLast && <BreadcrumbSeparator />}
+                                    {!isLast && <BreadcrumbSeparator className="hidden sm:inline-flex" />}
                                 </Fragment>
                             );
                         })}

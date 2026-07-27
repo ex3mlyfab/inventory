@@ -29,7 +29,6 @@ class RequisitionController extends Controller
         'Super Admin',
         'Medical Director',
         'Store Manager',
-        'Store Officer',
         'Inventory Manager',
         'Procurement Officer',
     ];
@@ -77,14 +76,23 @@ class RequisitionController extends Controller
             return $query;
         }
 
-        // Store Officer: Only their assigned store
-        if ($user->hasRole('Store Officer')) {
-            return $query->where('requesting_location_id', $user->storage_location_id)
-                         ->orWhere('issuing_location_id', $user->storage_location_id)
-                         ->orWhere('requested_by', $user->id);
+        // Store Officer & Main Store Officer
+        if ($user->hasRole('Store Officer') || $user->hasRole('Main Store Officer')) {
+            return $query->where(function ($q) use ($user) {
+                // See internal/purchase where their store is involved
+                $q->whereIn('type', ['internal', 'purchase'])
+                  ->where(function ($sub) use ($user) {
+                      $sub->where('requesting_location_id', $user->storage_location_id)
+                          ->orWhere('issuing_location_id', $user->storage_location_id);
+                  });
+            })->orWhere(function ($q) use ($user) {
+                // See departmental only if their store is issuing
+                $q->where('type', 'departmental')
+                  ->where('issuing_location_id', $user->storage_location_id);
+            })->orWhere('requested_by', $user->id);
         }
 
-        // Ward/Dept Head: Only their own department's incoming or outgoing requests
+        // Ward/Dept Head: Only their own department's departmental requests
         if ($user->hasRole('Ward/Dept Head')) {
             // Find departments where this user is the head
             $deptIds = \App\Models\Department::where('head_user_id', $user->id)->pluck('id');
@@ -94,11 +102,14 @@ class RequisitionController extends Controller
                 $deptIds->push($user->department_id);
             }
 
-            return $query->whereIn('requesting_department_id', $deptIds)
-                         ->orWhereHas('requestingLocation', function ($q) use ($deptIds) {
-                            $q->whereIn('department_id', $deptIds);
-                         })
-                         ->orWhere('requested_by', $user->id);
+            return $query->where('type', 'departmental')
+                         ->where(function ($q) use ($deptIds, $user) {
+                             $q->whereIn('requesting_department_id', $deptIds)
+                               ->orWhereHas('requestingLocation', function ($sub) use ($deptIds) {
+                                   $sub->whereIn('department_id', $deptIds);
+                               })
+                               ->orWhere('requested_by', $user->id);
+                         });
         }
 
         // Everyone else: only their own submissions
@@ -158,7 +169,7 @@ class RequisitionController extends Controller
         $type = $request->query('type', 'internal');
 
         // RBAC: Store Officer/Manager for Internal/Purchase
-        if (in_array($type, ['internal', 'purchase']) && ! $user->hasAnyRole(['Store Officer', 'Store Manager', 'Super Admin', 'Medical Director'])) {
+        if (in_array($type, ['internal', 'purchase']) && ! $user->hasAnyRole(['Main Store Officer', 'Store Officer', 'Store Manager', 'Super Admin', 'Medical Director'])) {
             return redirect()->route('procurement.requisitions.create', ['type' => 'departmental'])
                 ->with('error', 'Only store personnel can initiate Internal or Purchase requisitions.');
         }
@@ -268,7 +279,7 @@ class RequisitionController extends Controller
 
         if ($request->type === 'internal') {
             // RBAC: Store Officer can only request for their assigned store
-            if ($user->hasRole('Store Officer') && $request->requesting_location_id !== $user->storage_location_id) {
+            if (($user->hasRole('Store Officer') || $user->hasRole('Main Store Officer')) && $request->requesting_location_id !== $user->storage_location_id) {
                 abort(403, 'A Store Officer can only raise internal requisitions for their assigned location.');
             }
 
@@ -686,9 +697,13 @@ class RequisitionController extends Controller
             DB::transaction(function () use ($requisition, $validated, $action, $user) {
                 $action->execute($requisition, $validated['issuances'], $user->id);
 
+                // Fetch the updated status from the DB since the action modified it
+                $requisition->refresh();
+
                 $updateData = [
                     'collector_name' => $validated['collector_name'],
-                    'status'         => 'in_transit', // Mark as in transit immediately after issuance
+                    // Only mark as in transit if fully issued. Leave as partially_issued otherwise.
+                    'status'         => $requisition->status === 'issued' ? 'in_transit' : $requisition->status,
                 ];
 
                 if (!empty($validated['collector_signature'])) {

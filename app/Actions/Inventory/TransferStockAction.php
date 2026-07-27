@@ -29,7 +29,7 @@ class TransferStockAction
             ]);
 
             // 2. Add/Create Target Batch
-            $targetBatch = StockBatch::firstOrCreate(
+            $targetBatch = StockBatch::lockForUpdate()->firstOrCreate(
                 [
                     'storage_location_id' => $targetLocationId,
                     'product_id' => $sourceBatch->product_id,
