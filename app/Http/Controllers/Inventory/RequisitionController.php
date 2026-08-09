@@ -225,7 +225,8 @@ class RequisitionController extends Controller
             'location_id' => ['required', 'ulid', 'exists:storage_locations,id'],
         ]);
 
-        $stock = \App\Models\StockBatch::where('product_id', $request->product_id)
+        $stock = \App\Models\StockBatch::withoutGlobalScope('location_access')
+            ->where('product_id', $request->product_id)
             ->where('storage_location_id', $request->location_id)
             ->where('status', 'active')
             ->sum('quantity_on_hand');
@@ -244,7 +245,8 @@ class RequisitionController extends Controller
             'location_id' => ['required', 'ulid', 'exists:storage_locations,id'],
         ]);
 
-        $stocks = \App\Models\StockBatch::where('storage_location_id', $request->location_id)
+        $stocks = \App\Models\StockBatch::withoutGlobalScope('location_access')
+            ->where('storage_location_id', $request->location_id)
             ->where('status', 'active')
             ->select('product_id', DB::raw('SUM(quantity_on_hand) as available'))
             ->groupBy('product_id')
