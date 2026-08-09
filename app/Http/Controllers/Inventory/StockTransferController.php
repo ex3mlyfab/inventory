@@ -36,7 +36,8 @@ class StockTransferController extends Controller
             ->paginate(15);
 
         // Targeted locations
-        $locations = StorageLocation::where('is_active', true)
+        $locations = StorageLocation::withoutGlobalScope('location_access')
+            ->where('is_active', true)
             ->where('id', '!=', $user->storage_location_id)
             ->get(['id', 'name', 'code']);
 

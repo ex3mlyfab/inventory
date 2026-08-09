@@ -174,7 +174,8 @@ class RequisitionController extends Controller
                 ->with('error', 'Only store personnel can initiate Internal or Purchase requisitions.');
         }
 
-        $locations = StorageLocation::where('is_active', true)
+        $locations = StorageLocation::withoutGlobalScope('location_access')
+            ->where('is_active', true)
             ->with('department')
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type', 'department_id']);

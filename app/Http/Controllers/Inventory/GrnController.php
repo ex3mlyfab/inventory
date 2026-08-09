@@ -65,7 +65,8 @@ class GrnController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'sku', 'unit_of_measure_id', 'is_expirable']);
 
-        $locations = StorageLocation::where('is_active', true)
+        $locations = StorageLocation::withoutGlobalScope('location_access')
+            ->where('is_active', true)
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'type']);
 
