@@ -164,18 +164,19 @@ export default function StockAdjustments({ adjustments, stats }: Props) {
                             label="Pending Approvals" 
                             value={stats.pending} 
                             icon={AlertCircle}
-                            className={stats.pending > 0 ? "border-amber-200 bg-amber-50/30" : ""}
+                            className={(stats.pending > 0 ? "border-amber-200 bg-amber-50/30" : "") + " hidden md:block"}
                         />
                         <StatCard 
                             label="Approved Today" 
                             value={stats.approved_today} 
                             icon={CheckCircle2}
-                            className="border-indigo-100"
+                            className="border-indigo-100 hidden md:block"
                         />
                         <StatCard 
                             label="Adjustments (MTD)" 
                             value={stats.total_this_month} 
                             icon={History}
+                            className="hidden md:block"
                         />
                     </div>
 

@@ -153,24 +153,25 @@ export default function AuditTrail({ activities, stats, filters }: Props) {
                     label="Total Events Logged" 
                     value={stats?.total_logs ?? 0} 
                     icon={Activity} 
+                    className="hidden md:block"
                 />
                 <StatCard 
                     label="Events Today" 
                     value={stats?.today_logs ?? 0} 
                     icon={Calendar} 
-                    className="border-indigo-100 bg-indigo-50/30"
+                    className="border-indigo-100 bg-indigo-50/30 hidden md:block"
                 />
                 <StatCard 
                     label="User Actions" 
                     value={stats?.user_actions ?? 0} 
                     icon={Users} 
-                    className="border-emerald-100 bg-emerald-50/30"
+                    className="border-emerald-100 bg-emerald-50/30 hidden md:block"
                 />
                 <StatCard 
                     label="System Events" 
                     value={stats?.system_events ?? 0} 
                     icon={Server} 
-                    className="border-amber-100 bg-amber-50/30"
+                    className="border-amber-100 bg-amber-50/30 hidden md:block"
                 />
             </div>
 

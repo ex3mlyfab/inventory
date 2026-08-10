@@ -210,18 +210,19 @@ export default function ProductShow({ product, recentMovements, chartData }: Pro
                     label="Current Inventory" 
                     value={product.quantity_on_hand || 0} 
                     icon={Package}
-                    className="border-brand/10"
+                    className="border-brand/10 hidden md:block"
                 />
                 <StatCard 
                     label="Reorder Level" 
                     value={product.reorder_level} 
                     icon={Layers}
+                    className="hidden md:block"
                 />
                 <StatCard 
                     label="Earliest Expiry" 
                     value={earliestExpiry ? format(new Date(earliestExpiry), 'MMM dd, yyyy') : 'N/A'} 
                     icon={Calendar}
-                    className={earliestExpiry ? 'border-warning/20' : ''}
+                    className={(earliestExpiry ? 'border-warning/20' : '') + " hidden md:block"}
                 />
                 <Card className="border-brand/10 shadow-sm overflow-hidden bg-brand/5">
                     <CardContent className="p-4 flex items-center gap-4 h-full">

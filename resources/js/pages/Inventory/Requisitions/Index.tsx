@@ -15,7 +15,7 @@ import {
     DropdownMenu, DropdownMenuContent,
     DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Requisition, PaginationMeta } from '@/types/inventory';
+import { Requisition, PaginationMeta, Department } from '@/types/inventory';
 import {
     Plus, Search, MoreHorizontal, Eye,
     ClipboardList, ArrowRightLeft, ShoppingCart,
@@ -26,7 +26,8 @@ import { cn } from '@/lib/utils';
 
 interface Props {
     requisitions: { data: Requisition[] } & PaginationMeta;
-    filters: { search?: string; type?: string; status?: string };
+    filters: { search?: string; type?: string; status?: string; department?: string };
+    departments: Department[];
     stats: { total: number; pending_l1: number; pending_l2: number; internal: number; departmental: number; purchase: number };
 }
 
@@ -47,7 +48,7 @@ const TYPE_ICONS = {
     purchase: <ShoppingCart className="h-4 w-4 text-amber-600" />,
 };
 
-export default function RequisitionsIndex({ requisitions, filters, stats }: Props) {
+export default function RequisitionsIndex({ requisitions, filters, departments, stats }: Props) {
     const { auth } = usePage<any>().props;
     const user = auth.user;
     const [search, setSearch] = useState(filters.search ?? '');
@@ -288,7 +289,7 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                     </Button>
                 </form>
 
-                <div className="flex flex-col sm:flex-row gap-3">
+                <div className="flex flex-wrap gap-3">
                     <Select value={filters.type ?? 'all'} onValueChange={(v) => filter({ type: v === 'all' ? undefined : v })}>
                         <SelectTrigger className="h-11 w-full sm:w-44 bg-muted/30 border-transparent">
                             <SelectValue placeholder="All Types" />
@@ -314,8 +315,25 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                             <SelectItem value="submitted">Pending Dept (L1)</SelectItem>
                             <SelectItem value="level1_approved">Pending MD (L2)</SelectItem>
                             <SelectItem value="approved">Fully Approved</SelectItem>
+                            <SelectItem value="partially_issued">Partially Issued</SelectItem>
+                            <SelectItem value="issued">Issued</SelectItem>
+                            <SelectItem value="in_transit">In Transit</SelectItem>
+                            <SelectItem value="completed">Completed</SelectItem>
+                            <SelectItem value="received">Received</SelectItem>
                             <SelectItem value="rejected">Rejected</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    <Select value={filters.department ?? 'all'} onValueChange={(v) => filter({ department: v === 'all' ? undefined : v })}>
+                        <SelectTrigger className="h-11 w-full sm:w-48 bg-muted/30 border-transparent">
+                            <SelectValue placeholder="All Departments" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Departments</SelectItem>
+                            {departments.map((dept) => (
+                                <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -367,6 +385,33 @@ export default function RequisitionsIndex({ requisitions, filters, stats }: Prop
                                 <p className="text-[11px] text-text-secondary font-medium line-clamp-2 italic leading-relaxed">
                                     "{req.purpose ?? 'Stock replenishment request'}"
                                 </p>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[9px] font-medium text-text-muted uppercase tracking-wider">Requesting Unit</span>
+                                    <span
+                                        className="text-[10px] font-bold text-text-primary truncate max-w-[200px] text-right"
+                                        title={
+                                            req.type === 'departmental'
+                                                ? (req.requesting_department?.name || req.requesting_location?.department?.name || req.requester?.department?.name || '—')
+                                                : (req.requesting_location?.name || req.requester?.department?.name || '—')
+                                        }
+                                    >
+                                        {req.type === 'departmental'
+                                            ? (req.requesting_department?.name || req.requesting_location?.department?.name || req.requester?.department?.name || '—')
+                                            : (req.requesting_location?.name || req.requester?.department?.name || '—')}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-[9px] font-medium text-text-muted uppercase tracking-wider">Fulfilment Store</span>
+                                    <span
+                                        className="text-[10px] font-bold text-text-primary truncate max-w-[200px] text-right"
+                                        title={req.type === 'purchase' ? (req.supplier?.name || '—') : (req.issuing_location?.name || '—')}
+                                    >
+                                        {req.type === 'purchase' ? (req.supplier?.name || '—') : (req.issuing_location?.name || 'Main Store')}
+                                    </span>
+                                </div>
                             </div>
 
                             <div className="flex items-center justify-between mt-1">

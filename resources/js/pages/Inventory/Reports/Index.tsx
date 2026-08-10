@@ -63,24 +63,25 @@ export default function ReportsDashboard({ stats, movementData, categoryData, ca
                     label="Total catalog items" 
                     value={stats.total_products} 
                     icon={Package} 
+                    className="hidden md:block"
                 />
                 <StatCard 
                     label="Total stock value" 
                     value={formattedValue} 
                     icon={DollarSign} 
-                    className="border-indigo-100 bg-indigo-50/30"
+                    className="border-indigo-100 bg-indigo-50/30 hidden md:block"
                 />
                 <StatCard 
                     label="Low stock alerts" 
                     value={stats.low_stock_items} 
                     icon={TrendingUp} 
-                    className="border-amber-100 bg-amber-50/30"
+                    className="border-amber-100 bg-amber-50/30 hidden md:block"
                 />
                 <StatCard 
                     label="Expiring (90 days)" 
                     value={stats.expiring_soon} 
                     icon={AlertTriangle} 
-                    className="border-rose-100 bg-rose-50/30"
+                    className="border-rose-100 bg-rose-50/30 hidden md:block"
                 />
             </div>
 

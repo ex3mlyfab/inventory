@@ -181,18 +181,19 @@ export default function ProductsIndex({ products, filters, stats }: Props) {
                         label="Total Registered Products" 
                         value={stats.total} 
                         icon={Package} 
+                        className="hidden md:block"
                     />
                     <StatCard 
                         label="Low Stock Alert" 
                         value={stats.low_stock} 
                         icon={AlertTriangle} 
-                        className={stats.low_stock > 0 ? "border-warning/30 bg-warning/5" : ""}
+                        className={(stats.low_stock > 0 ? "border-warning/30 bg-warning/5" : "") + " hidden md:block"}
                     />
                     <StatCard 
                         label="Out of Stock" 
                         value={stats.out_of_stock} 
                         icon={PackageSearch} 
-                        className={stats.out_of_stock > 0 ? "border-destructive/20 bg-destructive/5" : ""}
+                        className={(stats.out_of_stock > 0 ? "border-destructive/20 bg-destructive/5" : "") + " hidden md:block"}
                     />
                 </div>
 
