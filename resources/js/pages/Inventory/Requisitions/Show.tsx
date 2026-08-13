@@ -119,7 +119,9 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
 
     const handleReceive = () => {
         setActionProcessing(true);
-        router.post(`/procurement/requisitions/${requisition.id}/receive`, {}, {
+        router.post(`/procurement/requisitions/${requisition.id}/receive`, {
+            updated_at: requisition.updated_at,
+        }, {
             onFinish: () => {
                 setActionProcessing(false);
                 setIsReceiveDialogOpen(false);
@@ -900,7 +902,36 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                 title="Confirm Receipt of Items?"
                 description={
                     <div className="space-y-3">
-                        <p className="text-sm text-text-secondary">Confirm that you have received all items for requisition <span className="font-bold text-text-primary">{requisition.reference}</span>.</p>
+                        <p className="text-sm text-text-secondary">
+                            Confirm that you have received all items for requisition{' '}
+                            <span className="font-bold text-text-primary">{requisition.reference}</span>.
+                        </p>
+                        <div className="rounded-lg border border-border/60 overflow-hidden">
+                            <table className="w-full text-xs">
+                                <thead>
+                                    <tr className="bg-muted/50 text-text-muted uppercase tracking-wider">
+                                        <th className="text-left px-3 py-2 font-semibold">Product</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Approved</th>
+                                        <th className="text-center px-3 py-2 font-semibold">Issued</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-border/40">
+                                    {requisition.items.map((item) => (
+                                        <tr key={item.id} className="hover:bg-muted/20">
+                                            <td className="px-3 py-2 font-medium text-text-primary">
+                                                {item.product?.name ?? '—'}
+                                            </td>
+                                            <td className="px-3 py-2 text-center text-text-secondary">
+                                                {item.quantity_approved}
+                                            </td>
+                                            <td className="px-3 py-2 text-center text-text-secondary">
+                                                {item.quantity_issued}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                         <div className="p-3 bg-brand/5 border border-brand/20 rounded-xl text-xs text-brand flex gap-2 items-start">
                             <CheckCircle2 className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                             <p>This will update your store/department inventory and mark the requisition as completed.</p>

@@ -297,6 +297,11 @@ class RequisitionController extends Controller
             'items.*.notes' => ['nullable', 'string', 'max:200'],
         ]);
 
+        $productIds = collect($base['items'])->pluck('product_id');
+        if ($productIds->unique()->count() !== $productIds->count()) {
+            return back()->withErrors(['error' => 'Duplicate products are not allowed in a single requisition. Please combine quantities for the same product.']);
+        }
+
         if ($request->type === 'internal') {
             // RBAC: Store Officer can only request for their assigned store
             if (($user->hasRole('Store Officer') || $user->hasRole('Main Store Officer')) && $request->requesting_location_id !== $user->storage_location_id) {
@@ -542,10 +547,25 @@ class RequisitionController extends Controller
 
         $data = $request->validate([
             'notes' => ['nullable', 'string', 'max:500'],
-            'items' => ['required', 'array'],
-            'items.*.id' => ['required', 'ulid', 'exists:requisition_items,id'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => [
+                'required', 'ulid', 'exists:requisition_items,id',
+                function ($attribute, $value, $fail) use ($requisition) {
+                    if (! $requisition->items()->where('id', $value)->exists()) {
+                        $fail('The selected item does not belong to this requisition.');
+                    }
+                },
+            ],
             'items.*.quantity_requested' => ['required', 'integer', 'min:1'],
-            'items.*.quantity_approved' => ['required', 'integer', 'min:0'],
+            'items.*.quantity_approved' => [
+                'required', 'integer', 'min:0',
+                function ($attribute, $value, $fail) {
+                    $requested = request()->input("items.{$attribute}.quantity_requested");
+                    if ($requested && $value > (int) $requested) {
+                        $fail('Approved quantity cannot exceed requested quantity.');
+                    }
+                },
+            ],
             'items.*.estimated_unit_cost' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -598,10 +618,25 @@ class RequisitionController extends Controller
 
         $data = $request->validate([
             'notes' => ['nullable', 'string', 'max:500'],
-            'items' => ['required', 'array'],
-            'items.*.id' => ['required', 'ulid', 'exists:requisition_items,id'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.id' => [
+                'required', 'ulid', 'exists:requisition_items,id',
+                function ($attribute, $value, $fail) use ($requisition) {
+                    if (! $requisition->items()->where('id', $value)->exists()) {
+                        $fail('The selected item does not belong to this requisition.');
+                    }
+                },
+            ],
             'items.*.quantity_requested' => ['required', 'integer', 'min:1'],
-            'items.*.quantity_approved' => ['required', 'integer', 'min:0'],
+            'items.*.quantity_approved' => [
+                'required', 'integer', 'min:0',
+                function ($attribute, $value, $fail) {
+                    $requested = request()->input("items.{$attribute}.quantity_requested");
+                    if ($requested && $value > (int) $requested) {
+                        $fail('Approved quantity cannot exceed requested quantity.');
+                    }
+                },
+            ],
             'items.*.estimated_unit_cost' => ['nullable', 'numeric', 'min:0'],
         ]);
 
@@ -720,7 +755,17 @@ class RequisitionController extends Controller
         $user = Auth::user();
 
         // Security: Must be assigned to the issuing location
-        if (! $user->hasRole('Super Admin') && $requisition->issuing_location_id !== $user->storage_location_id) {
+        // Management roles (Store Manager, Inventory Manager, Procurement Officer, Medical Director)
+        // can issue from any location as part of their oversight duties.
+        $canIssueAnyLocation = $user->hasAnyRole([
+            'Super Admin',
+            'Store Manager',
+            'Inventory Manager',
+            'Procurement Officer',
+            'Medical Director',
+        ]);
+
+        if (! $canIssueAnyLocation && $requisition->issuing_location_id !== $user->storage_location_id) {
             abort(403, 'You can only issue items from your assigned storage location.');
         }
 
@@ -734,12 +779,40 @@ class RequisitionController extends Controller
 
         $validated = $request->validate([
             'issuances' => ['required', 'array', 'min:1'],
-            'issuances.*.requisition_item_id' => ['required', 'ulid', 'exists:requisition_items,id'],
-            'issuances.*.stock_batch_id' => ['required', 'ulid', 'exists:stock_batches,id'],
-            'issuances.*.quantity' => ['required', 'integer', 'min:1'],
+            'issuances.*.requisition_item_id' => [
+                'required', 'ulid', 'exists:requisition_items,id',
+                function ($attribute, $value, $fail) use ($requisition) {
+                    if (! $requisition->items()->where('id', $value)->exists()) {
+                        $fail('The selected item does not belong to this requisition.');
+                    }
+                },
+            ],
+            'issuances.*.stock_batch_id' => [
+                'required', 'ulid', 'exists:stock_batches,id',
+                function ($attribute, $value, $fail) use ($requisition) {
+                    $batch = StockBatch::find($value);
+                    if ($batch && $batch->storage_location_id !== $requisition->issuing_location_id) {
+                        $fail('Selected batch does not belong to the issuing location.');
+                    }
+                },
+            ],
+            'issuances.*.quantity' => ['required', 'integer', 'min:1', 'max:10000'],
             'collector_name' => ['required', 'string', 'max:100'],
-            'collector_signature' => ['nullable', 'string'], // base64 string
+            'collector_signature' => ['nullable', 'string'],
         ]);
+
+        $validated['issuances'] = collect($validated['issuances'])
+            ->unique(fn($i) => $i['requisition_item_id'].'-'.$i['stock_batch_id'])
+            ->values()
+            ->all();
+
+        if (empty($validated['issuances'])) {
+            return back()->withErrors(['error' => 'No valid issuances provided after deduplication.']);
+        }
+
+        if (! empty($validated['collector_signature']) && ! Storage::disk('public')->exists('/')) {
+            return back()->withErrors(['error' => 'Signature storage is not configured. Please contact admin.']);
+        }
 
         try {
             DB::transaction(function () use ($requisition, $validated, $action, $user) {
@@ -800,9 +873,9 @@ class RequisitionController extends Controller
 
         $isRequester = $requisition->requested_by === $user->id;
         $isDeptHead = false;
+        $isManager = false;
 
         if ($user->hasRole('Ward/Dept Head')) {
-            // Check if user is head of the requesting department or the department of the requesting location
             $deptIds = Department::where('head_user_id', $user->id)->pluck('id');
 
             if ($user->department_id && ! $deptIds->contains($user->department_id)) {
@@ -816,120 +889,159 @@ class RequisitionController extends Controller
                          ($locDeptId && $deptIds->contains($locDeptId));
         }
 
-        if (! $isRequester && ! $isDeptHead && ! $user->hasRole('Super Admin')) {
-            abort(403, 'Only the requester or the Department Head can confirm receipt.');
+        $isManager = $user->hasAnyRole([
+            'Super Admin',
+            'Store Manager',
+            'Inventory Manager',
+            'Procurement Officer',
+            'Medical Director',
+        ]);
+
+        if (! $isRequester && ! $isDeptHead && ! $isManager) {
+            abort(403, 'Only the requester, Department Head, or authorized Manager can confirm receipt.');
         }
 
         // Preliminary guard (fast-fail before opening a transaction)
+        if ($requisition->status === 'completed') {
+            return back()->with('error', 'This requisition has already been received.');
+        }
+
         if (! in_array($requisition->status, ['issued', 'in_transit'])) {
             return back()->with('error', 'Only issued or in-transit requisitions can be marked as received.');
         }
 
-        DB::transaction(function () use ($requisition) {
-            // Race #6 — re-fetch the requisition with a row-lock and re-assert
-            // the status guard inside the transaction. Without this, two
-            // concurrent receive requests both pass the guard above and both
-            // execute, crediting stock twice.
-            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+        $updatedAt = $request->input('updated_at');
 
-            if (! in_array($requisition->status, ['issued', 'in_transit'])) {
-                throw new \Exception('Only issued or in-transit requisitions can be marked as received.');
-            }
+        try {
+            DB::transaction(function () use ($requisition, $updatedAt) {
+                $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
 
-            // Identify target location for receiving
-            $locationId = $requisition->requesting_location_id;
-            if ($requisition->type === 'departmental' && ! $locationId) {
-                $locationId = StorageLocation::where('department_id', $requisition->requesting_department_id)->value('id');
+                // Optimistic concurrency: detect if the requisition was modified
+                // by another request between page load and form submission.
+                if ($updatedAt && $requisition->updated_at->ne($updatedAt)) {
+                    throw new \Exception('This requisition was modified by another user. Please refresh the page and try again.');
+                }
 
-                // Fallback: Auto-create a departmental store if none exists to prevent process failure
-                if (! $locationId && $requisition->requesting_department_id) {
-                    $dept = $requisition->requestingDepartment ?: Department::find($requisition->requesting_department_id);
-                    if ($dept) {
-                        $newLocation = StorageLocation::create([
-                            'name' => $dept->name.' Store',
-                            'code' => 'DEPT-'.($dept->code ?? strtoupper(substr($dept->id, -4))),
-                            'type' => 'ward_store',
-                            'department_id' => $dept->id,
-                            'is_active' => true,
-                            'description' => 'Automatically created during requisition receipt.',
-                        ]);
-                        $locationId = $newLocation->id;
+                if ($requisition->status === 'completed') {
+                    throw new \Exception('This requisition has already been received by another user.');
+                }
+
+                if (! in_array($requisition->status, ['issued', 'in_transit'])) {
+                    throw new \Exception('This requisition is no longer in a valid state for receipt. Current status: '.$requisition->status.'.');
+                }
+
+                $userId = Auth::id();
+                if (! $userId) {
+                    throw new \Exception('User not authenticated.');
+                }
+
+                // Identify target location for receiving
+                $locationId = $requisition->requesting_location_id;
+                if ($requisition->type === 'departmental' && ! $locationId) {
+                    $locationId = StorageLocation::where('department_id', $requisition->requesting_department_id)->value('id');
+
+                    // Fallback: Auto-create a departmental store if none exists to prevent process failure
+                    if (! $locationId && $requisition->requesting_department_id) {
+                        $dept = $requisition->requestingDepartment ?: Department::find($requisition->requesting_department_id);
+                        if ($dept) {
+                            $newLocation = StorageLocation::create([
+                                'name' => $dept->name.' Store',
+                                'code' => 'DEPT-'.($dept->code ?? strtoupper(substr($dept->id, -4))),
+                                'type' => 'ward_store',
+                                'department_id' => $dept->id,
+                                'is_active' => true,
+                                'description' => 'Automatically created during requisition receipt.',
+                            ]);
+                            $locationId = $newLocation->id;
+                        }
                     }
                 }
-            }
 
-            if (! $locationId) {
-                throw new \Exception('Could not identify or create a storage location for the requesting department. Please ensure the department exists.');
-            }
-
-            // Find all outflows recorded for this requisition
-            $outflows = StockMovement::where('reference_type', Requisition::class)
-                ->where('reference_id', $requisition->id)
-                ->where('quantity', '<', 0)
-                ->with('batch')
-                ->get();
-
-            foreach ($outflows as $outflow) {
-                $sourceBatch = $outflow->batch;
-
-                if (! $sourceBatch) {
-                    Log::warning("Orphaned stock movement detected during requisition receive. StockMovement ID: {$outflow->id}, batch_id: {$outflow->stock_batch_id}");
-                    continue;
+                if (! $locationId) {
+                    throw new \Exception('Could not identify or create a storage location for the requesting department. Please ensure the department exists.');
                 }
 
-                $qty = abs($outflow->quantity);
+                // Find all outflows recorded for this requisition
+                $outflows = StockMovement::where('reference_type', Requisition::class)
+                    ->where('reference_id', $requisition->id)
+                    ->where('quantity', '<', 0)
+                    ->with('batch')
+                    ->get();
 
-                $batchQuery = StockBatch::lockForUpdate()
-                    ->where('storage_location_id', $locationId)
-                    ->where('product_id', $sourceBatch->product_id)
-                    ->where('batch_number', $sourceBatch->batch_number);
-
-                if ($sourceBatch->expiry_date) {
-                    $batchQuery->where('expiry_date', $sourceBatch->expiry_date);
-                } else {
-                    $batchQuery->whereNull('expiry_date');
+                if ($outflows->isEmpty()) {
+                    throw new \Exception('No issued stock movements found for this requisition. Cannot mark as received.');
                 }
 
-                $targetBatch = $batchQuery->first();
+                $totalReceived = $outflows->sum(fn($o) => abs($o->quantity));
+                $totalApproved = $requisition->items()->sum('quantity_approved');
+                if ($totalReceived > $totalApproved) {
+                    throw new \Exception('Received quantity exceeds approved quantity. Please contact admin.');
+                }
 
-                if (! $targetBatch) {
-                    $targetBatch = StockBatch::create([
-                        'storage_location_id' => $locationId,
-                        'product_id' => $sourceBatch->product_id,
-                        'batch_number' => $sourceBatch->batch_number,
-                        'expiry_date' => $sourceBatch->expiry_date,
-                        'quantity_on_hand' => 0,
-                        'quantity_received' => 0,
-                        'unit_cost' => $sourceBatch->unit_cost,
-                        'status' => 'active',
+                foreach ($outflows as $outflow) {
+                    $sourceBatch = $outflow->batch;
+
+                    if (! $sourceBatch) {
+                        Log::warning("Orphaned stock movement detected during requisition receive. StockMovement ID: {$outflow->id}, batch_id: {$outflow->stock_batch_id}");
+                        continue;
+                    }
+
+                    $qty = abs($outflow->quantity);
+
+                    $batchQuery = StockBatch::lockForUpdate()
+                        ->where('storage_location_id', $locationId)
+                        ->where('product_id', $sourceBatch->product_id)
+                        ->where('batch_number', $sourceBatch->batch_number);
+
+                    if ($sourceBatch->expiry_date) {
+                        $batchQuery->where('expiry_date', $sourceBatch->expiry_date);
+                    } else {
+                        $batchQuery->whereNull('expiry_date');
+                    }
+
+                    $targetBatch = $batchQuery->first();
+
+                    if (! $targetBatch) {
+                        $targetBatch = StockBatch::create([
+                            'storage_location_id' => $locationId,
+                            'product_id' => $sourceBatch->product_id,
+                            'batch_number' => $sourceBatch->batch_number,
+                            'expiry_date' => $sourceBatch->expiry_date,
+                            'quantity_on_hand' => 0,
+                            'quantity_received' => 0,
+                            'unit_cost' => $sourceBatch->unit_cost,
+                            'status' => 'active',
+                        ]);
+                    }
+
+                    $balanceBefore = $targetBatch->quantity_on_hand;
+                    $targetBatch->increment('quantity_on_hand', $qty);
+                    $targetBatch->increment('quantity_received', $qty);
+
+                    if ($targetBatch->status !== 'active') {
+                        $targetBatch->update(['status' => 'active']);
+                    }
+
+                    StockMovement::create([
+                        'stock_batch_id' => $targetBatch->id,
+                        'user_id' => $userId,
+                        'type' => 'requisition_fulfillment',
+                        'quantity' => $qty,
+                        'balance_before' => $balanceBefore,
+                        'balance_after' => $balanceBefore + $qty,
+                        'notes' => "Received from {$requisition->issuingLocation?->name} (Req: {$requisition->reference})",
+                        'reference_type' => Requisition::class,
+                        'reference_id' => $requisition->id,
                     ]);
                 }
 
-                $balanceBefore = $targetBatch->quantity_on_hand;
-                $targetBatch->increment('quantity_on_hand', $qty);
-                $targetBatch->increment('quantity_received', $qty);
+                $requisition->update(['status' => 'completed']);
+            });
 
-                if ($targetBatch->status !== 'active') {
-                    $targetBatch->update(['status' => 'active']);
-                }
-
-                StockMovement::create([
-                    'stock_batch_id' => $targetBatch->id,
-                    'user_id' => Auth::id(),
-                    'type' => 'requisition_fulfillment',
-                    'quantity' => $qty,
-                    'balance_before' => $balanceBefore,
-                    'balance_after' => $balanceBefore + $qty,
-                    'notes' => "Received from {$requisition->issuingLocation?->name} (Req: {$requisition->reference})",
-                    'reference_type' => Requisition::class,
-                    'reference_id' => $requisition->id,
-                ]);
-            }
-
-            $requisition->update(['status' => 'completed']);
-        });
-
-        return back()->with('success', 'Requisition marked as RECEIVED. Your inventory has been updated.');
+            return back()->with('success', 'Requisition marked as RECEIVED. Your inventory has been updated.');
+        } catch (\Exception $e) {
+            return back()->withErrors(['error' => $e->getMessage()]);
+        }
     }
 
     /**

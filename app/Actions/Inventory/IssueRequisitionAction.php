@@ -32,6 +32,11 @@ class IssueRequisitionAction
                     throw new \Exception("Insufficient stock in batch {$sourceBatch->batch_number} for product {$reqItem->product->name}.");
                 }
 
+                $newQuantityIssued = $reqItem->quantity_issued + $qty;
+                if ($newQuantityIssued > $reqItem->quantity_approved) {
+                    throw new \Exception("Cannot issue {$qty} units of {$reqItem->product->name}. Only {$reqItem->quantity_approved} were approved and {$reqItem->quantity_issued} already issued.");
+                }
+
                 // 1. Deduct from Source (Issuing Location)
                 $balanceBeforeSource = $sourceBatch->quantity_on_hand;
                 $balanceAfterSource = $balanceBeforeSource - $qty;
@@ -59,7 +64,7 @@ class IssueRequisitionAction
             }
 
             // 5. Update Requisition Status
-            $allIssued = $requisition->items->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
+            $allIssued = $requisition->items()->get()->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
             $requisition->update([
                 'status' => $allIssued ? 'issued' : 'partially_issued'
             ]);

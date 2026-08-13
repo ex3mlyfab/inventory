@@ -107,15 +107,40 @@ class GrnController extends Controller
             'notes'               => 'nullable|string|max:500',
             'items'               => 'required|array|min:1',
             'items.*.product_id'  => 'required|ulid|exists:products,id',
-            'items.*.quantity_received' => 'required|integer|min:1',
+            'items.*.quantity_received' => 'required|integer|min:1|max:10000',
             'items.*.unit_cost'   => 'required|numeric|min:0',
             'items.*.batch_number'=> 'nullable|string|max:100',
             'items.*.manufacturing_date' => 'nullable|date',
             'items.*.expiry_date' => 'nullable|date',
-            'items.*.requisition_item_id' => 'nullable|ulid|exists:requisition_items,id',
+            'items.*.requisition_item_id' => [
+                'nullable', 'ulid', 'exists:requisition_items,id',
+                function ($attribute, $value, $fail) use ($validated) {
+                    if ($value && ! empty($validated['requisition_id'])) {
+                        $reqItem = \App\Models\RequisitionItem::find($value);
+                        if ($reqItem && $reqItem->requisition_id !== $validated['requisition_id']) {
+                            $fail('The selected item does not belong to this requisition.');
+                        }
+                    }
+                },
+            ],
         ]);
 
         DB::transaction(function () use ($validated) {
+            // Pre-validate over-issuance for linked requisition items
+            if (!empty($validated['requisition_id'])) {
+                foreach ($validated['items'] as $itemData) {
+                    if (!empty($itemData['requisition_item_id'])) {
+                        $reqItem = RequisitionItem::lockForUpdate()->find($itemData['requisition_item_id']);
+                        if ($reqItem) {
+                            $newIssued = $reqItem->quantity_issued + $itemData['quantity_received'];
+                            if ($newIssued > $reqItem->quantity_approved) {
+                                throw new \Exception("Cannot receive {$itemData['quantity_received']} units for {$reqItem->product->name}. Only {$reqItem->quantity_approved} were approved and {$reqItem->quantity_issued} already issued.");
+                            }
+                        }
+                    }
+                }
+            }
+
             foreach ($validated['items'] as $itemData) {
                 // 1. Create Stock Batch
                 $batch = StockBatch::create([
