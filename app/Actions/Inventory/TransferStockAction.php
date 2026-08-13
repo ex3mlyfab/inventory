@@ -29,20 +29,31 @@ class TransferStockAction
             ]);
 
             // 2. Add/Create Target Batch
-            $targetBatch = StockBatch::lockForUpdate()->firstOrCreate(
-                [
+            $batchQuery = StockBatch::lockForUpdate()
+                ->where('storage_location_id', $targetLocationId)
+                ->where('product_id', $sourceBatch->product_id)
+                ->where('batch_number', $sourceBatch->batch_number);
+
+            if ($sourceBatch->expiry_date) {
+                $batchQuery->where('expiry_date', $sourceBatch->expiry_date);
+            } else {
+                $batchQuery->whereNull('expiry_date');
+            }
+
+            $targetBatch = $batchQuery->first();
+
+            if (! $targetBatch) {
+                $targetBatch = StockBatch::create([
                     'storage_location_id' => $targetLocationId,
                     'product_id' => $sourceBatch->product_id,
                     'batch_number' => $sourceBatch->batch_number,
                     'expiry_date' => $sourceBatch->expiry_date,
-                ],
-                [
                     'quantity_on_hand' => 0,
                     'quantity_received' => 0,
                     'unit_cost' => $sourceBatch->unit_cost,
                     'status' => 'active',
-                ]
-            );
+                ]);
+            }
 
             $balanceBeforeTarget = $targetBatch->quantity_on_hand;
             $balanceAfterTarget = $balanceBeforeTarget + $quantity;

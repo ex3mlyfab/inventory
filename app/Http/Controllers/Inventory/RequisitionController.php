@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
@@ -870,25 +871,39 @@ class RequisitionController extends Controller
 
             foreach ($outflows as $outflow) {
                 $sourceBatch = $outflow->batch;
+
+                if (! $sourceBatch) {
+                    Log::warning("Orphaned stock movement detected during requisition receive. StockMovement ID: {$outflow->id}, batch_id: {$outflow->stock_batch_id}");
+                    continue;
+                }
+
                 $qty = abs($outflow->quantity);
 
-                // Race #6 (cont.) — lock the target batch row before the
-                // read-modify-write so concurrent receives cannot both read
-                // the same balance_before and double-credit the quantity.
-                $targetBatch = StockBatch::lockForUpdate()->firstOrCreate(
-                    [
+                $batchQuery = StockBatch::lockForUpdate()
+                    ->where('storage_location_id', $locationId)
+                    ->where('product_id', $sourceBatch->product_id)
+                    ->where('batch_number', $sourceBatch->batch_number);
+
+                if ($sourceBatch->expiry_date) {
+                    $batchQuery->where('expiry_date', $sourceBatch->expiry_date);
+                } else {
+                    $batchQuery->whereNull('expiry_date');
+                }
+
+                $targetBatch = $batchQuery->first();
+
+                if (! $targetBatch) {
+                    $targetBatch = StockBatch::create([
                         'storage_location_id' => $locationId,
                         'product_id' => $sourceBatch->product_id,
                         'batch_number' => $sourceBatch->batch_number,
                         'expiry_date' => $sourceBatch->expiry_date,
-                    ],
-                    [
                         'quantity_on_hand' => 0,
                         'quantity_received' => 0,
                         'unit_cost' => $sourceBatch->unit_cost,
                         'status' => 'active',
-                    ]
-                );
+                    ]);
+                }
 
                 $balanceBefore = $targetBatch->quantity_on_hand;
                 $targetBatch->increment('quantity_on_hand', $qty);
