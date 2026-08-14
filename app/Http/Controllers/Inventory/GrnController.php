@@ -172,7 +172,7 @@ class GrnController extends Controller
 
                 // 3. Update Requisition item if linked
                 if (!empty($itemData['requisition_item_id'])) {
-                    $reqItem = RequisitionItem::find($itemData['requisition_item_id']);
+                    $reqItem = RequisitionItem::lockForUpdate()->find($itemData['requisition_item_id']);
                     if ($reqItem) {
                         $reqItem->increment('quantity_issued', $itemData['quantity_received']);
                     }
@@ -183,7 +183,7 @@ class GrnController extends Controller
             if (!empty($validated['requisition_id'])) {
                 $requisition = Requisition::with('items')->lockForUpdate()->find($validated['requisition_id']);
                 if ($requisition) {
-                    $allReceived = $requisition->items->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
+                    $allReceived = $requisition->items()->get()->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
                     
                     if ($allReceived) {
                         $requisition->update(['status' => 'completed']);

@@ -21,7 +21,7 @@ class IssueRequisitionAction
             $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
 
             foreach ($issuances as $issuance) {
-                $reqItem = RequisitionItem::findOrFail($issuance['requisition_item_id']);
+                $reqItem = RequisitionItem::lockForUpdate()->findOrFail($issuance['requisition_item_id']);
                 // Lock the batch row for the duration of the transaction so that
                 // two concurrent issue requests cannot both read the same
                 // quantity_on_hand and both pass the sufficiency check.
