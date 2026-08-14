@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 
 class PurchaseOrderController extends Controller
@@ -26,13 +28,13 @@ class PurchaseOrderController extends Controller
 
     /**
      * Auto-generate a unique PO reference number.
-     * Format: PO-YYYYMMDD-XXXX
+     * Format: PO-YYYYMMDD-XXXXXXXX
      */
     private function generateReference(): string
     {
         $today = now()->format('Ymd');
-        $count = PurchaseOrder::whereDate('created_at', today())->count() + 1;
-        return 'PO-' . $today . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+        $suffix = strtoupper(substr((string) Str::ulid(), -8));
+        return 'PO-' . $today . '-' . $suffix;
     }
 
     // ── Index ──────────────────────────────────────────────────────────
@@ -75,10 +77,10 @@ class PurchaseOrderController extends Controller
                 ->where('type', 'purchase')
                 ->findOrFail($request->requisition_id);
             
-            // Check if PR is already processed
-            if (in_array($requisition->status, ['po_created', 'completed'])) {
+            // Check if PR is already processed or cancelled
+            if (in_array($requisition->status, ['po_created', 'completed', 'cancelled'])) {
                 return redirect()->route('procurement.requisitions.show', $requisition)
-                    ->with('error', 'A Purchase Order has already been generated for this requisition.');
+                    ->with('error', 'A Purchase Order has already been generated for this requisition or it has been cancelled.');
             }
         }
 
@@ -245,12 +247,22 @@ class PurchaseOrderController extends Controller
             abort(403, 'You are not the designated Level 1 approver.');
         }
 
-        $purchaseOrder->update([
-            'status'             => 'level1_approved',
-            'level1_approved_by' => Auth::id(),
-            'level1_approved_at' => now(),
-            'level1_notes'       => $request->notes,
-        ]);
+        DB::transaction(function () use ($purchaseOrder, $request) {
+            $purchaseOrder = PurchaseOrder::lockForUpdate()->findOrFail($purchaseOrder->id);
+
+            if (!$purchaseOrder->awaitingLevel1()) {
+                throw ValidationException::withMessages([
+                    'status' => 'This PO is not awaiting Level 1 approval.',
+                ]);
+            }
+
+            $purchaseOrder->update([
+                'status'             => 'level1_approved',
+                'level1_approved_by' => Auth::id(),
+                'level1_approved_at' => now(),
+                'level1_notes'       => $request->notes,
+            ]);
+        });
 
         return back()->with('success', 'Level 1 approval granted.');
     }
@@ -270,6 +282,14 @@ class PurchaseOrderController extends Controller
         }
 
         DB::transaction(function () use ($purchaseOrder, $request) {
+            $purchaseOrder = PurchaseOrder::lockForUpdate()->findOrFail($purchaseOrder->id);
+
+            if (!$purchaseOrder->awaitingLevel2()) {
+                throw ValidationException::withMessages([
+                    'status' => 'This PO is not awaiting Level 2 approval.',
+                ]);
+            }
+
             $purchaseOrder->update([
                 'status'             => 'level2_approved',
                 'level2_approved_by' => Auth::id(),
@@ -303,19 +323,63 @@ class PurchaseOrderController extends Controller
         $request->validate(['notes' => 'required|string|max:500']);
 
         DB::transaction(function () use ($purchaseOrder, $request) {
+            $purchaseOrder = PurchaseOrder::lockForUpdate()->findOrFail($purchaseOrder->id);
+
+            $canReject = ($purchaseOrder->awaitingLevel1() && $purchaseOrder->isExpectedLevel1Approver(Auth::user()))
+                      || ($purchaseOrder->awaitingLevel2() && $purchaseOrder->isExpectedLevel2Approver(Auth::user()));
+
+            if (!$canReject) {
+                abort(403, 'Unauthorized to reject.');
+            }
+
             $purchaseOrder->update([
                 'status' => 'rejected',
                 'notes'  => $request->notes,
             ]);
 
-            // If PO fails, PR status to failed
+            // If PO fails, revert PR to approved so a new PO can be created
             if ($purchaseOrder->requisition_id) {
                 Requisition::where('id', $purchaseOrder->requisition_id)->update([
-                    'status' => 'failed'
+                    'status' => 'approved'
                 ]);
             }
         });
 
         return back()->with('success', 'Purchase Order rejected.');
+    }
+
+    // ── Cancel ──────────────────────────────────────────────────────────
+
+    public function cancel(Request $request, PurchaseOrder $purchaseOrder)
+    {
+        Gate::authorize('purchase-orders.create');
+
+        if ($purchaseOrder->created_by !== Auth::id()) {
+            abort(403, 'You can only cancel your own purchase orders.');
+        }
+
+        if (!in_array($purchaseOrder->status, ['draft', 'submitted'])) {
+            return back()->withErrors(['error' => 'Only draft or submitted purchase orders can be cancelled.']);
+        }
+
+        DB::transaction(function () use ($purchaseOrder) {
+            $purchaseOrder = PurchaseOrder::lockForUpdate()->findOrFail($purchaseOrder->id);
+
+            if (!in_array($purchaseOrder->status, ['draft', 'submitted'])) {
+                throw ValidationException::withMessages([
+                    'error' => 'This purchase order is no longer in a cancellable state.',
+                ]);
+            }
+
+            $purchaseOrder->update(['status' => 'cancelled']);
+
+            if ($purchaseOrder->requisition_id) {
+                Requisition::where('id', $purchaseOrder->requisition_id)->update([
+                    'status' => 'approved'
+                ]);
+            }
+        });
+
+        return back()->with('success', 'Purchase Order cancelled.');
     }
 }

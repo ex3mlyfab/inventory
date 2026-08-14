@@ -121,20 +121,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('requisitions/location-stock', [RequisitionController::class, 'locationStock'])->name('requisitions.location-stock');
         Route::post('requisitions', [RequisitionController::class, 'store'])->name('requisitions.store');
         Route::get('requisitions/{requisition}', [RequisitionController::class, 'show'])->name('requisitions.show');
+        Route::get('requisitions/{requisition}/edit', [RequisitionController::class, 'edit'])->name('requisitions.edit');
+        Route::put('requisitions/{requisition}', [RequisitionController::class, 'update'])->name('requisitions.update');
         Route::post('requisitions/{requisition}/issue', [RequisitionController::class, 'issue'])->name('requisitions.issue');
         Route::post('requisitions/{requisition}/receive', [RequisitionController::class, 'receive'])->name('requisitions.receive');
         Route::get('requisitions/{requisition}/print', [RequisitionController::class, 'printReleaseForm'])->name('requisitions.print');
+        Route::post('requisitions/{requisition}/upload-release-form', [RequisitionController::class, 'uploadReleaseForm'])->name('requisitions.upload-release-form');
 
         Route::post('requisitions/{requisition}/approve/level1', [RequisitionController::class, 'approveLevel1'])->name('requisitions.approve.l1');
         Route::post('requisitions/{requisition}/approve/level2', [RequisitionController::class, 'approveLevel2'])->name('requisitions.approve.l2');
         Route::post('requisitions/{requisition}/reject', [RequisitionController::class, 'reject'])->name('requisitions.reject');
         Route::post('requisitions/{requisition}/cancel', [RequisitionController::class, 'cancel'])->name('requisitions.cancel');
+        Route::post('requisitions/{requisition}/submit', [RequisitionController::class, 'submit'])->name('requisitions.submit');
 
         // Purchase Orders
         Route::resource('purchase-orders', \App\Http\Controllers\Inventory\PurchaseOrderController::class);
         Route::post('purchase-orders/{purchase_order}/approve/level1', [\App\Http\Controllers\Inventory\PurchaseOrderController::class, 'approveLevel1'])->name('purchase-orders.approve.l1');
         Route::post('purchase-orders/{purchase_order}/approve/level2', [\App\Http\Controllers\Inventory\PurchaseOrderController::class, 'approveLevel2'])->name('purchase-orders.approve.l2');
         Route::post('purchase-orders/{purchase_order}/reject', [\App\Http\Controllers\Inventory\PurchaseOrderController::class, 'reject'])->name('purchase-orders.reject');
+        Route::post('purchase-orders/{purchase_order}/cancel', [\App\Http\Controllers\Inventory\PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
     });
 
     // === REPORTS & ANALYTICS ===

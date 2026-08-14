@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Head, Link, useForm, useHttp } from '@inertiajs/react';
+import { Head, Link, useForm, useHttp, router } from '@inertiajs/react';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,6 +31,25 @@ interface Props {
         storage_location_id: string | null;
         department_id: string | null;
     };
+    requisition?: {
+        id: string;
+        reference: string;
+        purpose: string;
+        required_by: string;
+        notes: string;
+        updated_at: string;
+        requesting_location_id: string | null;
+        requesting_department_id: string | null;
+        issuing_location_id: string | null;
+        supplier_id: string | null;
+        items: {
+            id: string;
+            product_id: string;
+            quantity_requested: string;
+            quantity_on_hand: string;
+            estimated_unit_cost: string;
+        }[];
+    };
 }
 
 interface LineItem {
@@ -48,15 +67,16 @@ const CARD_HEADER_CLS = 'px-6 py-4 bg-muted/30 border-b border-border/50 flex it
 
 // ── Component ─────────────────────────────────────────────────────────────
 
-export default function RequisitionCreate({ type, stores, departmentalStores, products, suppliers, departments, defaultRef, user }: Props) {
+export default function RequisitionCreate({ type, stores, departmentalStores, products, suppliers, departments, defaultRef, user, requisition }: Props) {
     const isInternal = type === 'internal';
     const isDepartmental = type === 'departmental';
     const isPurchase = type === 'purchase';
 
     const http = useHttp();
-    const { data, setData, post, processing, errors, transform } = useForm<{
+    const { data, setData, post, put, processing, errors, transform } = useForm<{
         type: RequisitionType;
         reference: string;
+        status?: 'draft' | 'submitted';
         requesting_location_id: string;
         requesting_department_id: string;
         issuing_location_id: string;
@@ -64,19 +84,34 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         purpose: string;
         required_by: string;
         notes: string;
+        updated_at?: string;
+        sync_stock?: boolean;
         items: LineItem[];
     }>({
         type,
-        reference: defaultRef,
-        requesting_location_id: user.role === 'Store Officer' ? (user.storage_location_id || '') : '',
-        requesting_department_id: user.department_id || '',
-        issuing_location_id: stores.find(s => s.name.toLowerCase().includes('main store'))?.id || '',
-        supplier_id: '',
-        purpose: '',
-        required_by: '',
-        notes: '',
-        items: [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }],
+        reference: requisition?.reference ?? defaultRef,
+        status: requisition ? undefined : 'submitted',
+        sync_stock: false,
+        requesting_location_id: requisition?.requesting_location_id ?? (user.role === 'Store Officer' ? (user.storage_location_id || '') : ''),
+        requesting_department_id: requisition?.requesting_department_id ?? (user.department_id || ''),
+        issuing_location_id: requisition?.issuing_location_id ?? '',
+        supplier_id: requisition?.supplier_id ?? '',
+        purpose: requisition?.purpose ?? '',
+        required_by: requisition?.required_by ?? '',
+        notes: requisition?.notes ?? '',
+        updated_at: requisition?.updated_at,
+        items: requisition?.items?.length
+            ? requisition.items.map(i => ({
+                product_id: i.product_id,
+                quantity_requested: i.quantity_requested,
+                quantity_on_hand: i.quantity_on_hand,
+                estimated_unit_cost: i.estimated_unit_cost,
+                available_stock: undefined,
+            }))
+            : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }],
     });
+
+    const isEditing = !!requisition;
 
     // ── Memoized Options ─────────────────────────────────────────────────
 
@@ -188,6 +223,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
+        setData('status', 'submitted');
         
         if (isDepartmental) {
             transform((currentData) => ({
@@ -200,10 +236,36 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             }));
         }
 
-        post('/procurement/requisitions');
+        if (isEditing && requisition) {
+            put(`/procurement/requisitions/${requisition.id}`);
+        } else {
+            post('/procurement/requisitions');
+        }
     };
 
-    const pageTitle = isInternal ? 'New Internal Transfer' : isDepartmental ? 'New Departmental Request' : 'New Purchase Request';
+    const saveDraft = (e: React.FormEvent) => {
+        e.preventDefault();
+        setData('status', 'draft');
+        
+        if (isDepartmental) {
+            transform((currentData) => ({
+                ...currentData,
+                items: currentData.items.filter(item => 
+                    item.product_id && 
+                    item.quantity_requested && 
+                    Number(item.quantity_requested) > 0
+                )
+            }));
+        }
+
+        if (isEditing && requisition) {
+            put(`/procurement/requisitions/${requisition.id}`);
+        } else {
+            post('/procurement/requisitions');
+        }
+    };
+
+    const pageTitle = isEditing ? 'Edit Draft Requisition' : isInternal ? 'New Internal Transfer' : isDepartmental ? 'New Departmental Request' : 'New Purchase Request';
 
     return (
         <div className="flex flex-col gap-8 py-8 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 animate-in fade-in duration-700">
@@ -304,14 +366,14 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                         <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                                    Reference No. <span className="text-brand">*</span>
+                                    Reference No.
                                 </Label>
                                 <Input
                                     value={data.reference}
-                                    onChange={(e) => setData('reference', e.target.value)}
-                                    className="font-mono bg-muted/30 border-none focus-visible:ring-brand/20"
+                                    readOnly
+                                    className="font-mono bg-muted/20 border-none text-text-muted cursor-not-allowed"
                                 />
-                                <InputError message={errors.reference} />
+                                <p className="text-[10px] text-text-muted">Auto-generated on submission</p>
                             </div>
 
                             <div className="space-y-2">
@@ -645,21 +707,51 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 />
                             </div>
 
+                            {(isInternal || isDepartmental) && (
+                                <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                                    <input
+                                        type="checkbox"
+                                        id="sync_stock"
+                                        checked={data.sync_stock}
+                                        onChange={(e) => setData('sync_stock', e.target.checked)}
+                                        className="h-4 w-4 rounded border-amber-300 text-brand focus:ring-brand"
+                                    />
+                                    <Label htmlFor="sync_stock" className="text-xs font-medium text-amber-800 cursor-pointer">
+                                        Sync reported stock quantities with system inventory
+                                        <span className="block text-[10px] text-amber-600 font-normal mt-0.5">
+                                            This will adjust stock levels based on the quantities you enter above.
+                                        </span>
+                                    </Label>
+                                </div>
+                            )}
+
                             <div className="flex flex-col gap-3 pt-2">
                                 <Button
                                     className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-lg shadow-brand/20 h-12 rounded-xl font-black uppercase tracking-widest text-[10px]"
                                     disabled={processing}
+                                    type="submit"
                                 >
                                     {processing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-                                    {processing ? 'Processing...' : 'Submit Requisition'}
+                                    {processing ? 'Processing...' : isEditing ? 'Update Requisition' : 'Submit Requisition'}
                                 </Button>
+                                {!isEditing && (
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        className="w-full h-10 rounded-xl font-black uppercase tracking-widest text-[10px] border-border/50 hover:bg-muted/50"
+                                        disabled={processing}
+                                        onClick={saveDraft}
+                                    >
+                                        {processing ? 'Saving...' : 'Save Draft'}
+                                    </Button>
+                                )}
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     className="w-full text-[10px] font-black uppercase tracking-widest text-text-muted hover:bg-muted/50 h-10 rounded-xl"
-                                    onClick={() => window.history.back()}
+                                    onClick={() => isEditing && requisition ? router.visit(`/procurement/requisitions/${requisition.id}`) : window.history.back()}
                                 >
-                                    Discard Changes
+                                    {isEditing ? 'Back to Requisition' : 'Discard Changes'}
                                 </Button>
                             </div>
                         </CardContent>

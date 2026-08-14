@@ -319,7 +319,6 @@ export default function RequisitionsIndex({ requisitions, filters, departments, 
                             <SelectItem value="issued">Issued</SelectItem>
                             <SelectItem value="in_transit">In Transit</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
-                            <SelectItem value="received">Received</SelectItem>
                             <SelectItem value="rejected">Rejected</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>

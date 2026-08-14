@@ -143,11 +143,13 @@ export function IssueItemsDialog({ isOpen, onClose, requisition }: Props) {
         issuances: { requisition_item_id: string, stock_batch_id: string, quantity: number }[];
         collector_name: string;
         collector_signature: string;
+        updated_at: string;
         error?: string;
     }>({
         issuances: [] as { requisition_item_id: string, stock_batch_id: string, quantity: number }[],
         collector_name: requisition.requester?.name || '',
         collector_signature: '' as string,
+        updated_at: requisition.updated_at || '',
     });
 
     useEffect(() => {
@@ -156,7 +158,8 @@ export function IssueItemsDialog({ isOpen, onClose, requisition }: Props) {
             setData({
                 issuances: [],
                 collector_name: requisition.requester?.name || '',
-                collector_signature: ''
+                collector_signature: '',
+                updated_at: requisition.updated_at || '',
             });
         } else {
             setRows([]);

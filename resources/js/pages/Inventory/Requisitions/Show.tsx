@@ -9,6 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import InputError from '@/components/input-error';
 import { Can } from '@/components/can';
 import {
+    Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose
+} from '@/components/ui/dialog';
+import {
     Requisition, RequisitionItem, RequisitionStatus,
 } from '@/types/inventory';
 import { Auth } from '@/types/auth';
@@ -63,6 +66,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
     const [isIssueDialogOpen, setIsIssueDialogOpen] = useState(false);
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
+    const [isUploadFormOpen, setIsUploadFormOpen] = useState(false);
     const [actionProcessing, setActionProcessing] = useState(false);
 
     const currentLevel = canApproveL1 ? 1 : canApproveL2 ? 2 : 0;
@@ -112,8 +116,24 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
         });
     };
 
+    // ── Upload Release Form ─────────────────────────────────────────────
+    const releaseFormRef = React.useRef<HTMLInputElement>(null);
+    const handleUploadReleaseForm = (e: React.FormEvent) => {
+        e.preventDefault();
+        const file = releaseFormRef.current?.files?.[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('release_form', file);
+
+        router.post(`/procurement/requisitions/${requisition.id}/upload-release-form`, formData, {
+            onSuccess: () => setIsUploadFormOpen(false),
+        });
+    };
+
     const totalRequested = requisition.items.reduce((s, i) => s + i.quantity_requested, 0);
     const totalApproved  = requisition.items.reduce((s, i) => s + (i.quantity_approved || 0), 0);
+    const totalConsumed  = requisition.items.reduce((s, i) => s + (i.quantity_used || 0), 0);
 
 
 
@@ -184,10 +204,30 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                         Print Form
                                     </Button>
                                 </Link>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-2 h-8 font-bold text-[10px] uppercase tracking-wider border-border/50 hover:bg-muted/50 transition-all"
+                                    onClick={() => setIsUploadFormOpen(true)}
+                                >
+                                    <Upload className="h-3.5 w-3.5" />
+                                    Upload Release Form
+                                </Button>
                                 {(isInternal || isDepartmental) && !requisition.collector_name && (
                                     <Badge className="bg-amber-100 text-amber-700 animate-pulse border-0 font-black text-[9px] uppercase tracking-widest px-3">Ready for Collection</Badge>
                                 )}
                             </div>
+                        )}
+
+                        {requisition.status === 'draft' && requisition.requested_by === auth.user?.id && (
+                            <Button 
+                                className="bg-brand hover:bg-brand-dark shadow-lg shadow-brand/10 h-8 text-[10px] font-black uppercase tracking-widest px-4 w-full sm:w-auto" 
+                                size="sm"
+                                onClick={() => router.post(`/procurement/requisitions/${requisition.id}/submit`)}
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                                Submit for Approval
+                            </Button>
                         )}
 
                         {/* Receipt Action */}
@@ -198,9 +238,16 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                 (requisition.requesting_location?.department_id === auth.user?.department_id)
                             );
                             const isSuperAdmin = auth.roles?.includes('Super Admin');
+                            const isManager = auth.roles?.some((r: string) => [
+                                'Super Admin',
+                                'Store Manager',
+                                'Inventory Manager',
+                                'Procurement Officer',
+                                'Medical Director',
+                            ].includes(r));
                             
-                            const canReceive = (requisition.status === 'issued' || requisition.status === 'in_transit') && 
-                                              (isRequester || isDeptHead || isSuperAdmin);
+                            const canReceive = !isPurchase && (requisition.status === 'issued' || requisition.status === 'in_transit') && 
+                                              (isRequester || isDeptHead || isSuperAdmin || isManager);
 
                             if (!canReceive) return null;
 
@@ -430,7 +477,12 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                         <div className="hidden lg:grid grid-cols-12 px-6 py-4 bg-muted/10 border-b border-border/30 text-[10px] font-black uppercase tracking-widest text-text-muted">
                             <div className="col-span-4">Item Details</div>
                             <div className="col-span-2 text-center">Requested</div>
-                            {(isInternal || isDepartmental) && <div className="col-span-2 text-center text-brand">Stock Level</div>}
+                            {isDepartmental ? (
+                                <>
+                                    <div className="col-span-1 text-center">On Hand</div>
+                                    <div className="col-span-1 text-center text-brand">Consumed</div>
+                                </>
+                            ) : (isInternal) && <div className="col-span-2 text-center text-brand">Stock Level</div>}
                             <div className="col-span-2 text-center">Approved</div>
                             <div className="col-span-2 text-right">Status</div>
                         </div>
@@ -454,13 +506,23 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                             <p className="text-[10px] font-bold text-text-muted uppercase tracking-tighter">{item.product?.unit_of_measure?.abbreviation}</p>
                                         </div>
                                         {(isInternal || isDepartmental) && (
-                                            <div className="col-span-2 text-center">
+                                            <div className={cn("text-center", isDepartmental ? "col-span-1" : "col-span-2")}>
                                                 <Badge variant="outline" className={cn(
                                                     "font-black text-[10px] uppercase px-3 py-0.5 shadow-sm border-transparent",
                                                     item.quantity_on_hand > item.quantity_requested ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
                                                 )}>
                                                     {item.quantity_on_hand}
                                                 </Badge>
+                                            </div>
+                                        )}
+                                        {isDepartmental && (
+                                            <div className="col-span-1 text-center">
+                                                <p className={cn(
+                                                    "text-sm font-black",
+                                                    item.quantity_used > 0 ? 'text-brand' : 'text-text-muted/30 italic'
+                                                )}>
+                                                    {item.quantity_used || '—'}
+                                                </p>
                                             </div>
                                         )}
                                         <div className="col-span-2 text-center">
@@ -501,7 +563,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                             </Badge>
                                         </div>
                                         
-                                        <div className="grid grid-cols-3 gap-3 p-3 bg-muted/20 rounded-2xl border border-border/30">
+                                        <div className={cn("grid gap-3 p-3 bg-muted/20 rounded-2xl border border-border/30", isDepartmental ? "grid-cols-4" : "grid-cols-3")}>
                                             <div className="text-center">
                                                 <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Req.</p>
                                                 <p className="text-sm font-black text-text-primary">{item.quantity_requested}</p>
@@ -509,7 +571,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                             </div>
                                             
                                             {(isInternal || isDepartmental) ? (
-                                                <div className="text-center border-x border-border/30 px-2">
+                                                <div className={cn("text-center border-x border-border/30 px-2", isDepartmental && "col-span-1")}>
                                                     <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">On Hand</p>
                                                     <Badge variant="outline" className={cn(
                                                         "font-black text-[10px] uppercase px-2 py-0 shadow-sm border-transparent",
@@ -522,6 +584,18 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                                 <div className="text-center border-x border-border/30 px-2">
                                                     <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Cost</p>
                                                     <p className="text-xs font-bold text-text-primary">₦{item.estimated_unit_cost || '0'}</p>
+                                                </div>
+                                            )}
+                                            
+                                            {isDepartmental && (
+                                                <div className="text-center border-x border-border/30 px-2">
+                                                    <p className="text-[9px] font-black text-text-muted uppercase tracking-widest mb-1">Consumed</p>
+                                                    <p className={cn(
+                                                        "text-sm font-black",
+                                                        item.quantity_used > 0 ? 'text-brand' : 'text-text-muted/30 italic'
+                                                    )}>
+                                                        {item.quantity_used || '—'}
+                                                    </p>
                                                 </div>
                                             )}
                                             
@@ -549,7 +623,17 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                 <p className="text-xs font-black text-text-primary">{totalRequested}</p>
                                 <p className="text-[9px] font-bold text-text-muted uppercase tracking-tighter">Total Units</p>
                             </div>
-                            {(isInternal || isDepartmental) && <div className="col-span-2" />}
+                            {isDepartmental ? (
+                                <>
+                                    <div className="col-span-1 text-center">
+                                        <p className="text-[10px] font-black uppercase text-text-muted tracking-widest">Stock</p>
+                                    </div>
+                                    <div className="col-span-1 text-center">
+                                        <p className="text-xs font-black text-brand">{totalConsumed}</p>
+                                        <p className="text-[9px] font-bold text-text-muted uppercase tracking-tighter">Consumed</p>
+                                    </div>
+                                </>
+                            ) : (isInternal) && <div className="col-span-2" />}
                             <div className="col-span-2 text-center">
                                 <p className="text-xs font-black text-emerald-600">{totalApproved}</p>
                                 <p className="text-[9px] font-bold text-text-muted uppercase tracking-tighter">Approved Total</p>
@@ -941,6 +1025,41 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                 confirmText={actionProcessing ? 'Processing...' : 'Confirm Receipt'}
                 isLoading={actionProcessing}
             />
+
+            {/* Upload Release Form Dialog */}
+            <Dialog open={isUploadFormOpen} onOpenChange={setIsUploadFormOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Upload Release Form</DialogTitle>
+                        <DialogDescription>
+                            Attach the signed release form PDF for requisition {requisition.reference}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleUploadReleaseForm}>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="release_form">Release Form PDF</Label>
+                                <Input
+                                    id="release_form"
+                                    type="file"
+                                    accept=".pdf,application/pdf"
+                                    ref={releaseFormRef}
+                                    required
+                                />
+                                <p className="text-[10px] text-text-muted">Maximum file size: 5MB. Only PDF files are accepted.</p>
+                            </div>
+                        </div>
+                        <DialogFooter className="mt-6">
+                            <DialogClose asChild>
+                                <Button type="button" variant="ghost" disabled={actionProcessing}>Cancel</Button>
+                            </DialogClose>
+                            <Button type="submit" disabled={actionProcessing} className="bg-brand hover:bg-brand-dark">
+                                {actionProcessing ? 'Uploading...' : 'Upload Form'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

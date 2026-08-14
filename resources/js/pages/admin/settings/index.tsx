@@ -17,7 +17,6 @@ interface Props {
         timezone: string;
         inventory: {
             low_stock_threshold: number;
-            auto_approve_requisitions: boolean;
         }
     };
 }
@@ -31,7 +30,6 @@ export default function SettingsIndex({ settings }: Props) {
         currency: settings.currency,
         timezone: settings.timezone,
         low_stock_threshold: settings.inventory.low_stock_threshold,
-        auto_approve_requisitions: settings.inventory.auto_approve_requisitions,
     });
 
     const submit = (e: React.FormEvent) => {

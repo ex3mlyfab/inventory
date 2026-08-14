@@ -56,6 +56,7 @@ class RolePermissionSeeder extends Seeder
             'requisitions.approve.l2',
             'requisitions.cancel',
             'requisitions.issue',
+            'requisitions.receive',
             'purchase-orders.view',
             'purchase-orders.create',
             'purchase-orders.approve.l1',
@@ -105,7 +106,7 @@ class RolePermissionSeeder extends Seeder
             'locations.view', 'locations.manage',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.approve', 'stock.transfer', 'stock.count', 'stock.movements.view',
             'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete',
-            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel', 'requisitions.issue',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel', 'requisitions.issue', 'requisitions.receive',
             'purchase-orders.view', 'purchase-orders.approve.l1',
             'grn.view', 'grn.create', 'grn.approve',
 
@@ -122,7 +123,7 @@ class RolePermissionSeeder extends Seeder
             'locations.view',
             'stock.view', 'stock.movements.view',
             'suppliers.view', 'suppliers.create', 'suppliers.edit', 'suppliers.delete', 'suppliers.manage',
-            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel', 'requisitions.receive',
             'purchase-orders.view', 'purchase-orders.create',
             'grn.view', 'grn.create', 'grn.approve',
             'assets.view',
@@ -158,7 +159,7 @@ class RolePermissionSeeder extends Seeder
         $wardHead->syncPermissions([
             'products.view',
             'stock.view', 'stock.movements.view',
-            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel',
+            'requisitions.view', 'requisitions.create', 'requisitions.approve.l1', 'requisitions.cancel', 'requisitions.receive',
 
             'assets.view',
             'maintenance.view',
@@ -170,7 +171,7 @@ class RolePermissionSeeder extends Seeder
         $storeOfficer->syncPermissions([
             'products.view',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.view', 'requisitions.create', 'requisitions.cancel', 'requisitions.issue',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel', 'requisitions.issue', 'requisitions.receive',
             'grn.view', 'grn.create',
             'reports.view',
         ]);
@@ -180,7 +181,7 @@ class RolePermissionSeeder extends Seeder
         $mainStoreOfficer->syncPermissions([
             'products.view',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.view', 'requisitions.create', 'requisitions.cancel', 'requisitions.issue',
+            'requisitions.view', 'requisitions.create', 'requisitions.cancel', 'requisitions.issue', 'requisitions.receive',
             'grn.view', 'grn.create',
             'reports.view',
         ]);
@@ -219,7 +220,7 @@ class RolePermissionSeeder extends Seeder
             'products.view',
             'locations.view',
             'stock.view', 'stock.movements.view',
-            'requisitions.view', 'requisitions.approve.l2',
+            'requisitions.view', 'requisitions.approve.l2', 'requisitions.receive',
             'suppliers.view',
             'purchase-orders.view', 'purchase-orders.approve.l2',
             'grn.view',
@@ -233,7 +234,7 @@ class RolePermissionSeeder extends Seeder
             'products.view',
             'locations.view',
             'stock.view', 'stock.allocate', 'stock.adjust', 'stock.approve', 'stock.transfer', 'stock.count', 'stock.movements.view',
-            'requisitions.view', 'requisitions.issue',
+            'requisitions.view', 'requisitions.issue', 'requisitions.receive',
             'grn.view',
             'reports.view', 'reports.export',
             'audit-trail.view',
@@ -255,6 +256,7 @@ class RolePermissionSeeder extends Seeder
             'requisitions.create',
             'requisitions.cancel',
             'requisitions.issue',
+            'requisitions.receive',
             'grn.view',
             'grn.create',
             'reports.view',

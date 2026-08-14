@@ -24,7 +24,6 @@ class SettingsController extends Controller
                 'timezone' => config('app.timezone'),
                 'inventory' => [
                     'low_stock_threshold' => 10,
-                    'auto_approve_requisitions' => false,
                 ]
             ]
         ]);

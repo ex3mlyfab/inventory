@@ -180,6 +180,7 @@ export interface RequisitionItem {
     product_id: string;
     quantity_requested: number;
     quantity_on_hand: number;
+    quantity_used: number;
     quantity_approved: number;
     quantity_issued: number;
     estimated_unit_cost: number | null;

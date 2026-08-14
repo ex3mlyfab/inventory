@@ -161,12 +161,12 @@ class GrnController extends Controller
                 StockMovement::create([
                     'stock_batch_id' => $batch->id,
                     'user_id'        => Auth::id(),
-                    'type'           => 'in',
+                    'type'           => 'requisition_fulfillment',
                     'quantity'       => $itemData['quantity_received'],
                     'balance_before' => 0,
                     'balance_after'  => $itemData['quantity_received'],
-                    'reference_type' => 'GRN',
-                    'reference_id'   => $batch->id,
+                    'reference_type' => !empty($validated['requisition_id']) ? Requisition::class : StockBatch::class,
+                    'reference_id'   => !empty($validated['requisition_id']) ? $validated['requisition_id'] : $batch->id,
                     'notes'          => $validated['notes'] ?? 'Goods received via GRN: ' . $validated['reference'],
                 ]);
 
