@@ -519,7 +519,7 @@ class RequisitionController extends Controller
 
         return Inertia::render('Inventory/Requisitions/PrintReleaseForm', [
             'requisition' => $requisition,
-            'hospital_name' => 'FMC Abuja', // Should ideally come from config
+            'hospital_name' => config('app.name'),
         ]);
     }
 
@@ -822,33 +822,42 @@ class RequisitionController extends Controller
     {
         $user = Auth::user();
 
-        // Preliminary guard (fast-fail before validation overhead)
-        $canReject = ($requisition->awaitingLevel1() && $requisition->isExpectedLevel1Approver($user))
-                  || ($requisition->awaitingLevel2() && $requisition->isExpectedLevel2Approver($user));
+        if ($requisition->awaitingLevel1()) {
+            Gate::authorize('requisitions.approve.l1');
 
-        if (! $canReject) {
-            abort(403, 'You are not authorised to reject this requisition at its current stage.');
+            if (! $requisition->isExpectedLevel1Approver($user)) {
+                abort(403, 'You are not the designated Level 1 approver for this requisition.');
+            }
+        } elseif ($requisition->awaitingLevel2()) {
+            Gate::authorize('requisitions.approve.l2');
+
+            if (! $requisition->isExpectedLevel2Approver($user)) {
+                abort(403, 'Only the Medical Director can reject at Level 2.');
+            }
+        } else {
+            abort(403, 'This requisition is not in a state that allows rejection.');
         }
 
         $data = $request->validate([
             'notes' => ['required', 'string', 'max:500'],
         ]);
 
-        // Race #4 — wrap in a transaction and re-assert eligibility under a
-        // row-lock so two concurrent reject requests cannot both succeed.
-        DB::transaction(function () use ($requisition, $data, $user) {
+        $notesField = $requisition->awaitingLevel1() ? 'level1_notes' : 'level2_notes';
+
+        DB::transaction(function () use ($requisition, $data, $user, $notesField) {
             $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
 
-            $canReject = ($requisition->awaitingLevel1() && $requisition->isExpectedLevel1Approver($user))
-                      || ($requisition->awaitingLevel2() && $requisition->isExpectedLevel2Approver($user));
-
-            if (! $canReject) {
-                abort(403, 'You are not authorised to reject this requisition at its current stage.');
+            if ($requisition->awaitingLevel1()) {
+                abort_if(! $requisition->isExpectedLevel1Approver($user), 403, 'You are not the designated Level 1 approver for this requisition.');
+            } elseif ($requisition->awaitingLevel2()) {
+                abort_if(! $requisition->isExpectedLevel2Approver($user), 403, 'Only the Medical Director can reject at Level 2.');
+            } else {
+                abort(403, 'This requisition is not in a state that allows rejection.');
             }
 
             $requisition->update([
                 'status' => 'rejected',
-                'notes' => $data['notes'],
+                $notesField => $data['notes'],
             ]);
         });
 
@@ -1230,14 +1239,11 @@ class RequisitionController extends Controller
      */
     private function syncReportedStock(string $locationId, string $productId, int $reportedQty): int
     {
-        // Race #7 — this method is always called from inside a DB::transaction.
-        // Lock the matching batch rows before reading so that two concurrent
-        // store() calls for the same location+product cannot both read the same
-        // quantity_on_hand and overwrite each other's adjustment.
         $batches = StockBatch::lockForUpdate()
             ->where('storage_location_id', $locationId)
             ->where('product_id', $productId)
             ->where('status', 'active')
+            ->orderBy('created_at')
             ->get();
 
         $currentTotal = $batches->sum('quantity_on_hand');
@@ -1249,31 +1255,55 @@ class RequisitionController extends Controller
         }
 
         if ($batches->isNotEmpty()) {
-            $batch = $batches->first();
-            $oldQty = $batch->quantity_on_hand;
-            $newQty = $oldQty + $difference;
+            if ($difference > 0) {
+                $batch = $batches->first();
+                $oldQty = $batch->quantity_on_hand;
+                $newQty = $oldQty + $difference;
 
-            // If reported is less than system, the difference is recorded as 'used'
-            if ($difference < 0) {
-                $quantityUsed = abs($difference);
+                $batch->update([
+                    'quantity_on_hand' => $newQty,
+                    'status' => $newQty <= 0 ? 'exhausted' : $batch->status,
+                ]);
+
+                StockMovement::create([
+                    'stock_batch_id' => $batch->id,
+                    'user_id' => Auth::id(),
+                    'type' => 'adjustment',
+                    'quantity' => $difference,
+                    'balance_before' => $oldQty,
+                    'balance_after' => $newQty,
+                    'notes' => 'Self-reported stock during requisition',
+                ]);
+            } elseif ($difference < 0) {
+                $remaining = abs($difference);
+
+                foreach ($batches as $batch) {
+                    if ($remaining <= 0) {
+                        break;
+                    }
+
+                    $oldQty = $batch->quantity_on_hand;
+                    $deduct = min($remaining, $oldQty);
+                    $newQty = $oldQty - $deduct;
+                    $remaining -= $deduct;
+                    $quantityUsed += $deduct;
+
+                    $batch->update([
+                        'quantity_on_hand' => $newQty,
+                        'status' => $newQty <= 0 ? 'exhausted' : $batch->status,
+                    ]);
+
+                    StockMovement::create([
+                        'stock_batch_id' => $batch->id,
+                        'user_id' => Auth::id(),
+                        'type' => 'consumption',
+                        'quantity' => -$deduct,
+                        'balance_before' => $oldQty,
+                        'balance_after' => $newQty,
+                        'notes' => 'Consumption recorded during requisition',
+                    ]);
+                }
             }
-
-            $batch->update([
-                'quantity_on_hand' => max(0, $newQty),
-                'status' => $newQty <= 0 ? 'exhausted' : $batch->status,
-            ]);
-
-            StockMovement::create([
-                'stock_batch_id' => $batch->id,
-                'user_id' => Auth::id(),
-                'type' => $difference < 0 ? 'consumption' : 'adjustment',
-                'quantity' => $difference,
-                'balance_before' => $oldQty,
-                'balance_after' => max(0, $newQty),
-                'notes' => $difference < 0
-                                    ? 'Consumption recorded during requisition'
-                                    : 'Self-reported stock during requisition',
-            ]);
         } elseif ($reportedQty > 0) {
             StockBatch::create([
                 'product_id' => $productId,

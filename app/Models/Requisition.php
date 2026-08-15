@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Requisition extends Model
@@ -97,6 +98,16 @@ class Requisition extends Model
         return $this->hasMany(RequisitionItem::class);
     }
 
+    public function purchaseOrder()
+    {
+        return $this->hasOne(PurchaseOrder::class);
+    }
+
+    public function stockMovements(): MorphMany
+    {
+        return $this->morphMany(StockMovement::class, 'reference');
+    }
+
     // ── Stage Helpers ────────────────────────────────────────────────────
 
     public function isInternal(): bool
@@ -171,8 +182,8 @@ class Requisition extends Model
             return false;
         }
 
-        // Purchase: Procurement Officer or Inventory Manager
-        return $user->hasAnyRole(['Procurement Officer', 'Inventory Manager']);
+        // Purchase: Procurement Officer, Procurement Supervisor, or Inventory Manager
+        return $user->hasAnyRole(['Procurement Officer', 'Procurement Supervisor', 'Inventory Manager']);
     }
 
     /**

@@ -170,7 +170,6 @@ export type RequisitionStatus =
     | 'issued'
     | 'in_transit'
     | 'completed'
-    | 'received'
     | 'rejected'
     | 'cancelled';
 
