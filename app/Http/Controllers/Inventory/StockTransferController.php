@@ -27,7 +27,7 @@ class StockTransferController extends Controller
         // Historical transfers
         $transfers = StockMovement::where('type', 'transfer')
             ->with(['batch.product', 'batch.storageLocation', 'user'])
-            ->when(!$user->hasRole('Super Admin') && $user->storage_location_id, function($q) use ($user) {
+            ->when($user->cannot('locations.view_all') && $user->storage_location_id, function($q) use ($user) {
                 $q->whereHas('batch', function($bq) use ($user) {
                     $bq->where('storage_location_id', $user->storage_location_id);
                 });

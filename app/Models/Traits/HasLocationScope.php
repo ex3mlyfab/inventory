@@ -20,8 +20,8 @@ trait HasLocationScope
                 return;
             }
 
-            // Super Admin bypasses all scoping via Gate::before — nothing to do here.
-            if ($user->hasRole('Super Admin')) {
+            // Super Admin bypasses all scoping via super_admin permission.
+            if ($user->hasPermissionTo('super_admin')) {
                 return;
             }
 
@@ -38,7 +38,8 @@ trait HasLocationScope
             // assigned to a location by a Super Admin.
             if (
                 ! $user->hasPermissionTo('locations.view') &&
-                ! $user->hasPermissionTo('locations.manage')
+                ! $user->hasPermissionTo('locations.manage') &&
+                ! $user->hasPermissionTo('locations.view_all')
             ) {
                 $builder->whereRaw('0 = 1'); // Empty result — blocked until assigned.
             }

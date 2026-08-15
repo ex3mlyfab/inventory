@@ -26,14 +26,14 @@ class StockTakeController extends Controller
         $user = Auth::user();
 
         $sessions = StockTakeSession::with(['location', 'starter', 'completer'])
-            ->when(!$user->hasRole('Super Admin') && $user->storage_location_id, function($q) use ($user) {
+            ->when($user->cannot('locations.view_all') && $user->storage_location_id, function($q) use ($user) {
                 $q->where('storage_location_id', $user->storage_location_id);
             })
             ->latest()
             ->paginate(15);
 
         $locations = [];
-        if ($user->hasAnyRole(['Super Admin', 'Inventory Manager', 'Store Manager'])) {
+        if ($user->hasPermissionTo('locations.view_all')) {
             $locations = StorageLocation::where('is_active', true)->get(['id', 'name']);
         } else {
             $locations = StorageLocation::where('id', $user->storage_location_id)->get(['id', 'name']);

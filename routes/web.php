@@ -32,7 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dashboard', [\App\Http\Controllers\DashboardController::class, 'index'])->name('dashboard');
 
     // === ADMIN ===
-    Route::prefix('admin')->name('admin.')->middleware('role:Super Admin')->group(function () {
+    Route::prefix('admin')->name('admin.')->middleware('permission:super_admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::resource('roles', RoleController::class)->only(['index', 'store', 'edit', 'update']);
         Route::post('permissions', [\App\Http\Controllers\Admin\PermissionController::class, 'store'])->name('permissions.store');

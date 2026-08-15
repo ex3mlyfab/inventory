@@ -26,7 +26,7 @@ class InitialAllocationController extends Controller
 
         // Locations available to the user
         $locationsQuery = StorageLocation::where('is_active', true);
-        if (!$user->hasRole('Super Admin') && $user->storage_location_id) {
+        if ($user->cannot('locations.view_all') && $user->storage_location_id) {
             $locationsQuery->where('id', $user->storage_location_id);
         }
         $locations = $locationsQuery->get(['id', 'name', 'code']);

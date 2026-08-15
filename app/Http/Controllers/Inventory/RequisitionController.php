@@ -30,15 +30,9 @@ class RequisitionController extends Controller
     ];
 
     /**
-     * Roles that can see ALL requisitions regardless of department.
+     * Permission that allows viewing all requisitions regardless of scope.
      */
-    private const ALL_ACCESS_ROLES = [
-        'Super Admin',
-        'Medical Director',
-        'Store Manager',
-        'Inventory Manager',
-        'Procurement Officer',
-    ];
+    private const FULL_ACCESS_PERMISSION = 'requisitions.view_all';
 
     /**
      * Auto-generate a unique requisition reference number.
@@ -76,8 +70,8 @@ class RequisitionController extends Controller
             'items',
         ]);
 
-        // Full-access roles see everything
-        if ($user->hasAnyRole(self::ALL_ACCESS_ROLES)) {
+        // Full-access permission sees everything
+        if ($user->hasPermissionTo(self::FULL_ACCESS_PERMISSION)) {
             return $query;
         }
 
@@ -427,7 +421,7 @@ class RequisitionController extends Controller
         $user = Auth::user();
 
         // Enforce scoped visibility (non-whitelisted roles check dept ownership)
-        if (! $user->hasAnyRole(self::ALL_ACCESS_ROLES)) {
+        if (! $user->hasPermissionTo(self::FULL_ACCESS_PERMISSION)) {
             if ($user->hasRole('Ward/Dept Head')) {
                 $deptIds = Department::where('head_user_id', $user->id)->pluck('id');
 
@@ -489,7 +483,7 @@ class RequisitionController extends Controller
 
         $user = Auth::user();
 
-        if (! $user->hasAnyRole(self::ALL_ACCESS_ROLES)) {
+        if (! $user->hasPermissionTo(self::FULL_ACCESS_PERMISSION)) {
             if ($user->hasRole('Store Officer') || $user->hasRole('Main Store Officer')) {
                 $storeInvolved = $requisition->requesting_location_id === $user->storage_location_id
                               || $requisition->issuing_location_id === $user->storage_location_id;
@@ -934,19 +928,13 @@ class RequisitionController extends Controller
         // Security: Must be assigned to the issuing location
         // Management roles (Store Manager, Inventory Manager, Procurement Officer, Medical Director)
         // can issue from any location as part of their oversight duties.
-        $canIssueAnyLocation = $user->hasAnyRole([
-            'Super Admin',
-            'Store Manager',
-            'Inventory Manager',
-            'Procurement Officer',
-            'Medical Director',
-        ]);
+        $canIssueAnyLocation = $user->hasPermissionTo('requisitions.issue_any_location');
 
         if (! $canIssueAnyLocation && $requisition->issuing_location_id !== $user->storage_location_id) {
             abort(403, 'You can only issue items from your assigned storage location.');
         }
 
-        if (! in_array($requisition->status, ['approved', 'partially_issued', 'in_transit'])) {
+        if (! in_array($requisition->status, ['approved', 'partially_issued'])) {
             return back()->withErrors(['error' => 'This requisition is not in a state that allows issuance.']);
         }
 
@@ -1071,13 +1059,7 @@ class RequisitionController extends Controller
                          ($locDeptId && $deptIds->contains($locDeptId));
         }
 
-        $isManager = $user->hasAnyRole([
-            'Super Admin',
-            'Store Manager',
-            'Inventory Manager',
-            'Procurement Officer',
-            'Medical Director',
-        ]);
+        $isManager = $user->hasPermissionTo('requisitions.receive_any_location');
 
         if (! $isRequester && ! $isDeptHead && ! $isManager) {
             abort(403, 'Only the requester, Department Head, or authorized Manager can confirm receipt.');
@@ -1220,6 +1202,15 @@ class RequisitionController extends Controller
     public function uploadReleaseForm(Request $request, Requisition $requisition)
     {
         Gate::authorize('requisitions.view');
+
+        $user = Auth::user();
+
+        $isRequester = $requisition->requested_by === $user->id;
+        $isManager = $user->hasAnyRole(['Super Admin', 'Store Manager', 'Inventory Manager', 'Procurement Officer', 'Medical Director']);
+
+        if (! $isRequester && ! $isManager) {
+            abort(403, 'Only the requester or a manager can upload release forms.');
+        }
 
         $request->validate([
             'release_form' => ['required', 'file', 'mimes:pdf', 'max:5120'],

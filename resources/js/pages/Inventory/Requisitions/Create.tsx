@@ -195,17 +195,26 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             http.get(`/procurement/requisitions/location-stock?location_id=${data.issuing_location_id}`, {
                 onSuccess: (res: any) => {
                     const stocks = res?.data?.data ?? res?.data ?? [];
-                    if (stocks.length > 0) {
-                        setData('items', stocks.map((s: any) => ({
+                    const stockProductIds = new Set(stocks.map((s: any) => s.product_id));
+                    
+                    const mergedItems = stocks.map((s: any) => {
+                        const existing = data.items.find(item => item.product_id === s.product_id);
+                        return existing ? { ...existing, available_stock: Number(s.available) } : {
                             product_id: s.product_id,
                             quantity_requested: '',
                             quantity_on_hand: '',
                             estimated_unit_cost: '',
                             available_stock: Number(s.available)
-                        })));
-                    } else {
-                        setData('items', [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-                    }
+                        };
+                    });
+                    
+                    const preservedItems = data.items
+                        .filter(item => item.product_id && !stockProductIds.has(item.product_id))
+                        .map(item => ({ ...item, available_stock: undefined }));
+                    
+                    const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+                    
+                    setData('items', finalItems);
                 }
             });
         } else if (locationId) {

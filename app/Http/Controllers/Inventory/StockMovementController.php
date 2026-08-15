@@ -26,7 +26,7 @@ class StockMovementController extends Controller
         $locationIds = null;
         if ($storeId) {
             $locationIds = [$storeId];
-        } elseif (!$user->hasRole('Super Admin') && $user->storage_location_id) {
+        } elseif ($user->cannot('locations.view_all') && $user->storage_location_id) {
             $locationIds = [$user->storage_location_id];
         }
 

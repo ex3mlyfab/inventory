@@ -18,8 +18,7 @@ class StockController extends Controller
         Gate::authorize('stock.view');
 
         $user = auth()->user();
-        $managementRoles = ['Super Admin', 'Inventory Manager', 'Medical Director', 'Store Manager', 'Procurement Supervisor'];
-        $canViewValuation = $user->hasAnyRole($managementRoles);
+        $canViewValuation = $user->hasPermissionTo('stock.view_valuation');
 
         $storeId = $request->input('store_id');
         $departmentId = $request->input('department_id');
@@ -31,7 +30,7 @@ class StockController extends Controller
             $locationIds = [$storeId];
         } elseif ($departmentId) {
             $locationIds = StorageLocation::where('department_id', $departmentId)->pluck('id')->toArray();
-        } elseif (!$user->hasRole('Super Admin') && $user->storage_location_id) {
+        } elseif ($user->cannot('locations.view_all') && $user->storage_location_id) {
             $locationIds = [$user->storage_location_id];
         }
 

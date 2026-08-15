@@ -90,8 +90,7 @@ class PurchaseOrder extends Model
 
     public function isExpectedLevel1Approver(User $user): bool
     {
-        // Procurement Supervisor
-        return $user->hasRole('Procurement Supervisor');
+        return $user->hasAnyRole(['Procurement Supervisor', 'Inventory Manager']);
     }
 
     public function isExpectedLevel2Approver(User $user): bool

@@ -15,29 +15,28 @@ export function usePermissions() {
     /** Check if the user has a specific permission */
     const can = useCallback(
         (permission: string): boolean => {
-            // Super Admin bypasses all checks
-            if (roles.has('Super Admin')) return true;
+            if (permissions.has('super_admin')) return true;
             return permissions.has(permission);
         },
-        [permissions, roles],
+        [permissions],
     );
 
     /** Check if the user has ANY of the given permissions */
     const canAny = useCallback(
         (perms: string[]): boolean => {
-            if (roles.has('Super Admin')) return true;
+            if (permissions.has('super_admin')) return true;
             return perms.some((p) => permissions.has(p));
         },
-        [permissions, roles],
+        [permissions],
     );
 
     /** Check if the user has ALL of the given permissions */
     const canAll = useCallback(
         (perms: string[]): boolean => {
-            if (roles.has('Super Admin')) return true;
+            if (permissions.has('super_admin')) return true;
             return perms.every((p) => permissions.has(p));
         },
-        [permissions, roles],
+        [permissions],
     );
 
     /** Check if the user has a specific role */

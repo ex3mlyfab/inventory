@@ -78,9 +78,9 @@ class PurchaseOrderController extends Controller
                 ->findOrFail($request->requisition_id);
             
             // Check if PR is already processed or cancelled
-            if (in_array($requisition->status, ['po_created', 'completed', 'cancelled'])) {
+            if (in_array($requisition->status, ['po_created', 'completed', 'cancelled', 'rejected'])) {
                 return redirect()->route('procurement.requisitions.show', $requisition)
-                    ->with('error', 'A Purchase Order has already been generated for this requisition or it has been cancelled.');
+                    ->with('error', 'A Purchase Order has already been generated for this requisition or it has been cancelled or rejected.');
             }
         }
 
@@ -172,7 +172,7 @@ class PurchaseOrderController extends Controller
 
     public function edit(PurchaseOrder $purchaseOrder)
     {
-        Gate::authorize('purchase-orders.create');
+        Gate::authorize('purchase-orders.edit');
 
         if (!in_array($purchaseOrder->status, ['draft', 'submitted'])) {
             return back()->with('error', 'Only draft or submitted POs can be edited.');
@@ -193,7 +193,7 @@ class PurchaseOrderController extends Controller
 
     public function update(Request $request, PurchaseOrder $purchaseOrder)
     {
-        Gate::authorize('purchase-orders.create');
+        Gate::authorize('purchase-orders.edit');
 
         if (!in_array($purchaseOrder->status, ['draft', 'submitted'])) {
             return back()->with('error', 'Only draft or submitted POs can be updated.');
@@ -352,7 +352,7 @@ class PurchaseOrderController extends Controller
 
     public function cancel(Request $request, PurchaseOrder $purchaseOrder)
     {
-        Gate::authorize('purchase-orders.create');
+        Gate::authorize('purchase-orders.cancel');
 
         if ($purchaseOrder->created_by !== Auth::id()) {
             abort(403, 'You can only cancel your own purchase orders.');

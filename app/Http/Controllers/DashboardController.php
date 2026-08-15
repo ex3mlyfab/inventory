@@ -16,10 +16,11 @@ class DashboardController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $isSuperAdmin = $user->hasRole('Super Admin');
+        $isSuperAdmin = $user->hasPermissionTo('super_admin');
         $locationId = $user->storage_location_id;
         
-        $showGlobalStats = $user->hasAnyRole(['Store Officer', 'Medical Director', 'Procurement Officer', 'Super Admin']);
+        $showGlobalStats = $user->hasAnyRole(['Store Officer', 'Medical Director', 'Procurement Officer', 'Super Admin'])
+            || $user->hasPermissionTo('locations.view_all');
 
         $stats = [
             'totalProducts' => 0,
@@ -49,7 +50,7 @@ class DashboardController extends Controller
 
             // 4. Pending Requisitions (Filtered by location if not Super Admin)
             $requisitionQuery = Requisition::whereIn('status', ['submitted', 'level1_approved']);
-            if (!$isSuperAdmin && $locationId) {
+            if ($user->cannot('locations.view_all') && $locationId) {
                 $requisitionQuery->where(function($q) use ($locationId) {
                     $q->where('requesting_location_id', $locationId)
                       ->orWhere('issuing_location_id', $locationId);
@@ -64,7 +65,7 @@ class DashboardController extends Controller
                 DB::raw('SUM(CASE WHEN type = "out" THEN quantity ELSE 0 END) as total_out')
             );
 
-            if (!$isSuperAdmin && $locationId) {
+            if ($user->cannot('locations.view_all') && $locationId) {
                 $movementQuery->join('stock_batches', 'stock_movements.stock_batch_id', '=', 'stock_batches.id')
                     ->where('stock_batches.storage_location_id', $locationId);
             }
@@ -96,7 +97,7 @@ class DashboardController extends Controller
             // 7. Recent Activity (Scoped by joining with StockBatch if not Super Admin)
             $activityQuery = StockMovement::with(['batch.product', 'user']);
             
-            if (!$isSuperAdmin && $locationId) {
+            if ($user->cannot('locations.view_all') && $locationId) {
                 $activityQuery->join('stock_batches', 'stock_movements.stock_batch_id', '=', 'stock_batches.id')
                     ->where('stock_batches.storage_location_id', $locationId)
                     ->select('stock_movements.*'); // Avoid column collision
