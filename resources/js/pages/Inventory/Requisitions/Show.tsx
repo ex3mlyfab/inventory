@@ -1067,7 +1067,6 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
 // @ts-ignore
 RequisitionShow.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
         { title: 'Requisitions', href: '/procurement/requisitions' },
         { title: 'Requisition Detail', href: '#' },
     ],

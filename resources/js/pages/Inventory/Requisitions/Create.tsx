@@ -774,7 +774,6 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 // @ts-ignore
 RequisitionCreate.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
         { title: 'Requisitions', href: '/procurement/requisitions' },
         { title: 'New Request', href: '#' },
     ],

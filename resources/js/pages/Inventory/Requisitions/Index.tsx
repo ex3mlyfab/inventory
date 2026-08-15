@@ -477,7 +477,6 @@ export default function RequisitionsIndex({ requisitions, filters, departments, 
 // @ts-ignore
 RequisitionsIndex.layout = {
     breadcrumbs: [
-        { title: 'Procurement', href: '/procurement/suppliers' },
-        { title: 'Requisitions', href: '#' },
+        { title: 'Requisitions', href: '/procurement/requisitions' },
     ],
 };
