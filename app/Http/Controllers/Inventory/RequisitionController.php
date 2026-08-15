@@ -728,7 +728,6 @@ class RequisitionController extends Controller
             foreach ($data['items'] as $itemData) {
                 $requisition->items()->findOrFail($itemData['id'])
                     ->update([
-                        'quantity_requested' => $itemData['quantity_requested'],
                         'quantity_approved' => $itemData['quantity_approved'],
                         'estimated_unit_cost' => $itemData['estimated_unit_cost'] ?? null,
                     ]);
@@ -799,7 +798,6 @@ class RequisitionController extends Controller
             foreach ($data['items'] as $itemData) {
                 $requisition->items()->findOrFail($itemData['id'])
                     ->update([
-                        'quantity_requested' => $itemData['quantity_requested'],
                         'quantity_approved' => $itemData['quantity_approved'],
                         'estimated_unit_cost' => $itemData['estimated_unit_cost'] ?? null,
                     ]);
@@ -1077,8 +1075,8 @@ class RequisitionController extends Controller
             abort(403, 'Only the requester, Department Head, or authorized Manager can confirm receipt.');
         }
 
-        if (! in_array($requisition->status, ['in_transit', 'partially_received'])) {
-            return back()->with('error', 'Only in-transit or partially-received requisitions can be received.');
+        if (! in_array($requisition->status, ['in_transit', 'partially_received', 'partially_issued'])) {
+            return back()->with('error', 'Only in-transit, partially-issued, or partially-received requisitions can be received.');
         }
 
         $validated = $request->validate([

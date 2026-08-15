@@ -8,6 +8,7 @@ use App\Models\StockBatch;
 use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Database\QueryException;
 
 class ReceiveRequisitionAction
 {
@@ -20,7 +21,7 @@ class ReceiveRequisitionAction
         return DB::transaction(function () use ($requisition, $lines, $userId) {
             $requisition = Requisition::whereKey($requisition->id)->lockForUpdate()->firstOrFail();
 
-            if (! in_array($requisition->status, ['in_transit', 'partially_received'])) {
+            if (! in_array($requisition->status, ['in_transit', 'partially_received', 'partially_issued'])) {
                 throw ValidationException::withMessages([
                     'status' => 'Requisition is not awaiting receipt.',
                 ]);
@@ -78,8 +79,10 @@ class ReceiveRequisitionAction
                     if ($remainingQty <= 0 && $remainingShort <= 0) break;
 
                     $alreadySettled = RequisitionReceipt::where('source_stock_movement_id', $outflow->id)
+                        ->lockForUpdate()
                         ->sum('quantity_received') +
                         RequisitionReceipt::where('source_stock_movement_id', $outflow->id)
+                        ->lockForUpdate()
                         ->sum('quantity_short');
 
                     $available = abs($outflow->quantity) - $alreadySettled;
@@ -172,19 +175,32 @@ class ReceiveRequisitionAction
         }
 
         if (! $targetBatch) {
-            $targetBatch = StockBatch::create([
-                'product_id'          => $sourceBatch->product_id,
-                'storage_location_id' => $targetLocationId,
-                'source_batch_id'     => $sourceBatch->id,
-                'batch_number'        => $sourceBatch->batch_number,
-                'expiry_date'         => $sourceBatch->expiry_date,
-                'manufacturing_date'  => $sourceBatch->manufacturing_date,
-                'unit_cost'           => $sourceBatch->unit_cost,
-                'supplier_id'         => $sourceBatch->supplier_id,
-                'quantity_on_hand'    => 0,
-                'quantity_received'   => 0,
-                'status'              => 'active',
-            ]);
+            try {
+                $targetBatch = StockBatch::create([
+                    'product_id'          => $sourceBatch->product_id,
+                    'storage_location_id' => $targetLocationId,
+                    'source_batch_id'     => $sourceBatch->id,
+                    'batch_number'        => $sourceBatch->batch_number,
+                    'expiry_date'         => $sourceBatch->expiry_date,
+                    'manufacturing_date'  => $sourceBatch->manufacturing_date,
+                    'unit_cost'           => $sourceBatch->unit_cost,
+                    'supplier_id'         => $sourceBatch->supplier_id,
+                    'quantity_on_hand'    => 0,
+                    'quantity_received'   => 0,
+                    'status'              => 'active',
+                ]);
+            } catch (QueryException $e) {
+                $targetBatch = StockBatch::withoutGlobalScope('location_access')
+                    ->where('storage_location_id', $targetLocationId)
+                    ->where('product_id', $sourceBatch->product_id)
+                    ->where('batch_number', $sourceBatch->batch_number)
+                    ->when(
+                        $sourceBatch->expiry_date,
+                        fn ($q) => $q->whereDate('expiry_date', $sourceBatch->expiry_date),
+                        fn ($q) => $q->whereNull('expiry_date')
+                    )
+                    ->firstOrFail();
+            }
         } elseif (! $targetBatch->source_batch_id) {
             $targetBatch->update(['source_batch_id' => $sourceBatch->id]);
         }

@@ -16,60 +16,50 @@ class IssueRequisitionAction
      */
     public function execute(Requisition $requisition, array $issuances, string $performerId): void
     {
-        DB::transaction(function () use ($requisition, $issuances, $performerId) {
-            // Lock the requisition to prevent concurrent issuance
-            $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
+        $requisition = Requisition::lockForUpdate()->findOrFail($requisition->id);
 
-            foreach ($issuances as $issuance) {
-                $reqItem = RequisitionItem::lockForUpdate()->findOrFail($issuance['requisition_item_id']);
-                // Lock the batch row for the duration of the transaction so that
-                // two concurrent issue requests cannot both read the same
-                // quantity_on_hand and both pass the sufficiency check.
-                $sourceBatch = StockBatch::lockForUpdate()->findOrFail($issuance['stock_batch_id']);
-                $qty = $issuance['quantity'];
+        foreach ($issuances as $issuance) {
+            $reqItem = RequisitionItem::lockForUpdate()->findOrFail($issuance['requisition_item_id']);
+            $sourceBatch = StockBatch::lockForUpdate()->findOrFail($issuance['stock_batch_id']);
+            $qty = $issuance['quantity'];
 
-                if ($sourceBatch->quantity_on_hand < $qty) {
-                    throw new \Exception("Insufficient stock in batch {$sourceBatch->batch_number} for product {$reqItem->product->name}.");
-                }
-
-                $newQuantityIssued = $reqItem->quantity_issued + $qty;
-                if ($newQuantityIssued > $reqItem->quantity_approved) {
-                    throw new \Exception("Cannot issue {$qty} units of {$reqItem->product->name}. Only {$reqItem->quantity_approved} were approved and {$reqItem->quantity_issued} already issued.");
-                }
-
-                // 1. Deduct from Source (Issuing Location)
-                $balanceBeforeSource = $sourceBatch->quantity_on_hand;
-                $balanceAfterSource = $balanceBeforeSource - $qty;
-                
-                $sourceBatch->update([
-                    'quantity_on_hand' => $balanceAfterSource,
-                    'status' => $balanceAfterSource <= 0 ? 'exhausted' : $sourceBatch->status
-                ]);
-
-                // 3. Log Source Outflow
-                StockMovement::create([
-                    'stock_batch_id' => $sourceBatch->id,
-                    'requisition_item_id' => $reqItem->id,
-                    'user_id' => $performerId,
-                    'type' => 'requisition_fulfillment',
-                    'quantity' => -$qty,
-                    'balance_before' => $balanceBeforeSource,
-                    'balance_after' => $balanceAfterSource,
-                    'notes' => "Issued to " . ($requisition->requestingLocation?->name ?? $requisition->requestingDepartment?->name) . " (Req: {$requisition->reference})",
-                    'reference_type' => Requisition::class,
-                    'reference_id' => $requisition->id
-                ]);
-
-                // 4. Update Requisition Item
-                $reqItem->increment('quantity_issued', $qty);
-                $reqItem->increment('quantity_in_transit', $qty);
+            if ($sourceBatch->quantity_on_hand < $qty) {
+                throw new \Exception("Insufficient stock in batch {$sourceBatch->batch_number} for product {$reqItem->product->name}.");
             }
 
-            // 5. Update Requisition Status
-            $allIssued = $requisition->items()->get()->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
-            $requisition->update([
-                'status' => $allIssued ? 'issued' : 'partially_issued'
+            $newQuantityIssued = $reqItem->quantity_issued + $qty;
+            if ($newQuantityIssued > $reqItem->quantity_approved) {
+                throw new \Exception("Cannot issue {$qty} units of {$reqItem->product->name}. Only {$reqItem->quantity_approved} were approved and {$reqItem->quantity_issued} already issued.");
+            }
+
+            $balanceBeforeSource = $sourceBatch->quantity_on_hand;
+            $balanceAfterSource = $balanceBeforeSource - $qty;
+
+            $sourceBatch->update([
+                'quantity_on_hand' => $balanceAfterSource,
+                'status' => $balanceAfterSource <= 0 ? 'exhausted' : $sourceBatch->status
             ]);
-        });
+
+            StockMovement::create([
+                'stock_batch_id' => $sourceBatch->id,
+                'requisition_item_id' => $reqItem->id,
+                'user_id' => $performerId,
+                'type' => 'requisition_fulfillment',
+                'quantity' => -$qty,
+                'balance_before' => $balanceBeforeSource,
+                'balance_after' => $balanceAfterSource,
+                'notes' => "Issued to " . ($requisition->requestingLocation?->name ?? $requisition->requestingDepartment?->name) . " (Req: {$requisition->reference})",
+                'reference_type' => Requisition::class,
+                'reference_id' => $requisition->id
+            ]);
+
+            $reqItem->increment('quantity_issued', $qty);
+            $reqItem->increment('quantity_in_transit', $qty);
+        }
+
+        $allIssued = $requisition->items()->get()->every(fn($item) => $item->quantity_issued >= $item->quantity_approved);
+        $requisition->update([
+            'status' => $allIssued ? 'issued' : 'partially_issued'
+        ]);
     }
 }
