@@ -49,6 +49,7 @@ class IssueRequisitionAction
                 // 3. Log Source Outflow
                 StockMovement::create([
                     'stock_batch_id' => $sourceBatch->id,
+                    'requisition_item_id' => $reqItem->id,
                     'user_id' => $performerId,
                     'type' => 'requisition_fulfillment',
                     'quantity' => -$qty,
@@ -61,6 +62,7 @@ class IssueRequisitionAction
 
                 // 4. Update Requisition Item
                 $reqItem->increment('quantity_issued', $qty);
+                $reqItem->increment('quantity_in_transit', $qty);
             }
 
             // 5. Update Requisition Status

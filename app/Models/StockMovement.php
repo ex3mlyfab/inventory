@@ -12,9 +12,9 @@ class StockMovement extends Model
     use HasFactory, HasUlids;
 
     protected $fillable = [
-        'stock_batch_id', 'user_id', 'type', 'quantity', 
-        'balance_before', 'balance_after', 'reference_type', 
-        'reference_id', 'notes'
+        'stock_batch_id', 'user_id', 'type', 'quantity',
+        'balance_before', 'balance_after', 'reference_type',
+        'reference_id', 'notes', 'requisition_id', 'requisition_item_id',
     ];
 
     public function batch(): BelongsTo

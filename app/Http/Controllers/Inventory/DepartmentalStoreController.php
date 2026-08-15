@@ -103,9 +103,9 @@ class DepartmentalStoreController extends Controller
                 ->take(50)
                 ->get();
 
-            // 3. Usage History (Consumption)
+            // 3. Usage History (Consumption + Requisition Outflows)
             $data['usage_history'] = StockMovement::with(['batch.product', 'user'])
-                ->where('type', 'consumption')
+                ->whereIn('type', ['consumption', 'requisition_fulfillment'])
                 ->whereHas('batch', function ($query) use ($locationIds, $productId) {
                     $query->whereIn('storage_location_id', $locationIds);
                     if ($productId) {

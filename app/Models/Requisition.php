@@ -98,6 +98,11 @@ class Requisition extends Model
         return $this->hasMany(RequisitionItem::class);
     }
 
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(RequisitionReceipt::class);
+    }
+
     public function purchaseOrder()
     {
         return $this->hasOne(PurchaseOrder::class);

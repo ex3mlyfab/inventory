@@ -14,9 +14,19 @@ class StockBatch extends Model
     use HasFactory, HasUlids, HasLocationScope;
 
     protected $fillable = [
-        'product_id', 'supplier_id', 'batch_number', 'reference', 'quantity_received',
-        'quantity_on_hand', 'unit_cost', 'manufacturing_date', 'expiry_date',
-        'location', 'storage_location_id', 'status'
+        'product_id',
+        'supplier_id',
+        'batch_number',
+        'reference',
+        'quantity_received',
+        'quantity_on_hand',
+        'unit_cost',
+        'manufacturing_date',
+        'expiry_date',
+        'location',
+        'storage_location_id',
+        'source_batch_id',
+        'status',
     ];
 
     protected $casts = [
@@ -38,6 +48,16 @@ class StockBatch extends Model
     public function storageLocation(): BelongsTo
     {
         return $this->belongsTo(StorageLocation::class);
+    }
+
+    public function sourceBatch(): BelongsTo
+    {
+        return $this->belongsTo(StockBatch::class, 'source_batch_id');
+    }
+
+    public function childBatches(): HasMany
+    {
+        return $this->hasMany(StockBatch::class, 'source_batch_id');
     }
 
     public function movements(): HasMany

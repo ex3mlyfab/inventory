@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class RequisitionItem extends Model
 {
@@ -19,6 +20,8 @@ class RequisitionItem extends Model
         'quantity_used',
         'quantity_approved',
         'quantity_issued',
+        'quantity_in_transit',
+        'quantity_received',
         'estimated_unit_cost',
         'notes',
     ];
@@ -35,5 +38,10 @@ class RequisitionItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(RequisitionReceipt::class);
     }
 }
