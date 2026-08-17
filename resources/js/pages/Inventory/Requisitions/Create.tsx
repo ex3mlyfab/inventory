@@ -4,7 +4,7 @@ import {
     ShoppingCart, AlertCircle, BadgeCheck,
     Package, ClipboardList, Hash, Building2, Loader2
 } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect as useLayoutEffect, useCallback } from 'react';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -152,7 +152,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         }
     };
 
-    const checkStock = (productId: string, locationOverride?: string) => {
+    const checkStock = useCallback((productId: string, locationOverride?: string) => {
         const locationId = locationOverride || (isPurchase ? data.requesting_location_id : data.issuing_location_id);
 
         if (!productId || !locationId) {
@@ -192,19 +192,30 @@ return;
                 });
             }
         });
-    };
+    }, [data.requesting_location_id, data.issuing_location_id, isPurchase, http]);
 
     // Re-check all items if location changes
-    React.useEffect(() => {
-        const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
-        
-        if (isDepartmental && data.issuing_location_id) {
-            http.get(`/procurement/requisitions/location-stock?location_id=${data.issuing_location_id}`, {
+    const issuingRef = useRef(data.issuing_location_id);
+    const requestingRef = useRef(data.requesting_location_id);
+
+    useLayoutEffect(() => {
+        issuingRef.current = data.issuing_location_id;
+        requestingRef.current = data.requesting_location_id;
+
+        const controller = new AbortController();
+
+        const currentIssuing = data.issuing_location_id;
+        const currentRequesting = data.requesting_location_id;
+
+        if (isDepartmental && currentIssuing) {
+            http.get(`/procurement/requisitions/location-stock?location_id=${currentIssuing}`, {
                 onSuccess: (res: any) => {
+                    if (issuingRef.current !== currentIssuing) return;
+
                     setData((prev) => {
                         const stocks = res?.data?.data ?? res?.data ?? [];
                         const stockProductIds = new Set(stocks.map((s: any) => s.product_id));
-                        
+
                         const mergedItems = stocks.map((s: any) => {
                             const existing = prev.items.find(item => item.product_id === s.product_id);
 
@@ -216,29 +227,34 @@ return;
                                 available_stock: Number(s.available)
                             };
                         });
-                        
+
                         const preservedItems = prev.items
                             .filter(item => item.product_id && !stockProductIds.has(item.product_id))
                             .map(item => ({ ...item, available_stock: undefined }));
-                        
+
                         const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-                        
+
                         return { ...prev, items: finalItems };
                     });
                 },
                 onError: (e) => {
-                    console.error('Failed to fetch location stock', e);
+                    if (e?.name !== 'AbortError') {
+                        console.error('Failed to fetch location stock', e);
+                    }
                 }
             });
-        } else if (locationId) {
-            data.items.forEach((item) => {
-                if (item.product_id) {
-                    checkStock(item.product_id, locationId);
-                }
+        } else if (currentRequesting || currentIssuing) {
+            const locationId = currentRequesting || currentIssuing;
+            const itemsToCheck = data.items.filter(item => item.product_id);
+
+            itemsToCheck.forEach((item) => {
+                checkStock(item.product_id, locationId);
             });
         }
+
+        return () => controller.abort();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.issuing_location_id, data.requesting_location_id]);
+    }, [data.issuing_location_id, data.requesting_location_id, checkStock, isDepartmental]);
 
     const totalEstimated = data.items.reduce(
         (sum, row) => sum + (Number(row.quantity_requested) * Number(row.estimated_unit_cost || 0)),

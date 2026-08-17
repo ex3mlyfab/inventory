@@ -36,6 +36,11 @@ export function Combobox({
 }: ComboboxProps) {
   const [open, setOpen] = React.useState(false)
 
+  const handleSelect = React.useCallback((nextValue: string) => {
+    onChange(nextValue)
+    setOpen(false)
+  }, [onChange])
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -51,7 +56,7 @@ export function Combobox({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" side="bottom" align="center" avoidCollisions={true} sticky="always">
         <Command>
           <CommandInput placeholder={placeholder} />
           <CommandList>
@@ -62,8 +67,7 @@ export function Combobox({
                   key={option.value}
                   value={option.label}
                   onSelect={() => {
-                    onChange(option.value === value ? "" : option.value)
-                    setOpen(false)
+                    handleSelect(option.value === value ? "" : option.value)
                   }}
                 >
                   <Check
