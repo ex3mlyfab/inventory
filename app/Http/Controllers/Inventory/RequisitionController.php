@@ -297,7 +297,7 @@ class RequisitionController extends Controller
         }
 
         $status = $base['status'] ?? 'submitted';
-        $syncStock = $base['sync_stock'] ?? false;
+        $syncStock = true; // Always sync reported stock by default
 
         $productIds = collect($base['items'])->pluck('product_id');
         if ($productIds->unique()->count() !== $productIds->count()) {

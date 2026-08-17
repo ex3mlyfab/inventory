@@ -91,7 +91,6 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         type,
         reference: requisition?.reference ?? defaultRef,
         status: requisition ? undefined : 'submitted',
-        sync_stock: false,
         requesting_location_id: requisition?.requesting_location_id ?? (user.role === 'Store Officer' ? (user.storage_location_id || '') : ''),
         requesting_department_id: requisition?.requesting_department_id ?? (user.department_id || ''),
         issuing_location_id: requisition?.issuing_location_id ?? '',
@@ -715,25 +714,6 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                     className="flex min-h-[60px] w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20"
                                 />
                             </div>
-
-                            {(isInternal || isDepartmental) && (
-                                <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-                                    <input
-                                        type="checkbox"
-                                        id="sync_stock"
-                                        checked={data.sync_stock}
-                                        onChange={(e) => setData('sync_stock', e.target.checked)}
-                                        className="h-4 w-4 rounded border-amber-300 text-brand focus:ring-brand"
-                                    />
-                                    <Label htmlFor="sync_stock" className="text-xs font-medium text-amber-800 cursor-pointer">
-                                        Sync reported stock quantities with system inventory
-                                        <span className="block text-[10px] text-amber-600 font-normal mt-0.5">
-                                            This will adjust stock levels based on the quantities you enter above.
-                                        </span>
-                                    </Label>
-                                </div>
-                            )}
-
                             <div className="flex flex-col gap-3 pt-2">
                                 <Button
                                     className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-lg shadow-brand/20 h-12 rounded-xl font-black uppercase tracking-widest text-[10px]"

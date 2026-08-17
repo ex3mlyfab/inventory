@@ -180,7 +180,7 @@ function Sidebar({
   if (isMobile) {
     React.useEffect(() => {
       // Close the drawer whenever Inertia begins navigation.
-      const unsubscribe = router.on('start', () => {
+      const unsubscribe = router.on('navigate', () => {
         setOpenMobile(false);
       });
 
