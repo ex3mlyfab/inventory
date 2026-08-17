@@ -361,7 +361,7 @@ class RequisitionController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($request, $base, $status) {
+        DB::transaction(function () use ($request, $base, $status, $syncStock) {
             $req = Requisition::create([
                 'type' => $base['type'],
                 'reference' => $this->generateReference($base['type']),

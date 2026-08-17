@@ -1,19 +1,19 @@
-import React, { useState, useMemo } from 'react';
 import { Head, Link, useForm, useHttp, router } from '@inertiajs/react';
-import { PageHeader } from '@/components/shared/page-header';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
-import InputError from '@/components/input-error';
-import { Supplier, Product, StorageLocationBasic, RequisitionType, Department } from '@/types/inventory';
-import { Combobox } from '@/components/ui/combobox';
 import {
     ArrowLeft, Save, Plus, Trash2, ArrowRightLeft,
     ShoppingCart, AlertCircle, BadgeCheck,
     Package, ClipboardList, Hash, Building2, Loader2
 } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import InputError from '@/components/input-error';
+import { PageHeader } from '@/components/shared/page-header';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Combobox } from '@/components/ui/combobox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import type { Supplier, Product, StorageLocationBasic, RequisitionType, Department } from '@/types/inventory';
 
 // ── Types ────────────────────────────────────────────────────────────────
 
@@ -146,14 +146,18 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         setData('items', updated);
 
         const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
+
         if (field === 'product_id' && value && locationId) {
-            checkStock(i, value);
+            checkStock(value);
         }
     };
 
-    const checkStock = (index: number, productId: string, locationOverride?: string) => {
+    const checkStock = (productId: string, locationOverride?: string) => {
         const locationId = locationOverride || (isPurchase ? data.requesting_location_id : data.issuing_location_id);
-        if (!productId || !locationId) return;
+
+        if (!productId || !locationId) {
+return;
+}
 
         const params = new URLSearchParams({ 
             product_id: productId, 
@@ -162,63 +166,75 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
         http.get(`/procurement/requisitions/check-stock?${params}`, {
             onSuccess: (res: any) => {
-                // Defensively extract available stock from varying response shapes
                 const available = res?.available ?? res?.data?.available ?? 0;
                 setData((prev) => {
                     const items = [...prev.items];
-                    if (items[index]) {
-                        items[index] = { ...items[index], available_stock: Number(available) };
+                    const idx = items.findIndex(item => item.product_id === productId);
+
+                    if (idx >= 0) {
+                        items[idx] = { ...items[idx], available_stock: Number(available) };
                     }
+
                     return { ...prev, items };
                 });
             },
             onError: (e) => {
                 console.error('Failed to check stock', e);
-                // Set stock to undefined on error so UI shows "No store selected" instead of stale data
                 setData((prev) => {
                     const items = [...prev.items];
-                    if (items[index]) {
-                        items[index] = { ...items[index], available_stock: undefined };
+                    const idx = items.findIndex(item => item.product_id === productId);
+
+                    if (idx >= 0) {
+                        items[idx] = { ...items[idx], available_stock: undefined };
                     }
+
                     return { ...prev, items };
                 });
             }
         });
     };
 
-    // Re-check all items if location changes — pass locationId explicitly to avoid stale closures
+    // Re-check all items if location changes
     React.useEffect(() => {
         const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
         
         if (isDepartmental && data.issuing_location_id) {
             http.get(`/procurement/requisitions/location-stock?location_id=${data.issuing_location_id}`, {
                 onSuccess: (res: any) => {
-                    const stocks = res?.data?.data ?? res?.data ?? [];
-                    const stockProductIds = new Set(stocks.map((s: any) => s.product_id));
-                    
-                    const mergedItems = stocks.map((s: any) => {
-                        const existing = data.items.find(item => item.product_id === s.product_id);
-                        return existing ? { ...existing, available_stock: Number(s.available) } : {
-                            product_id: s.product_id,
-                            quantity_requested: '',
-                            quantity_on_hand: '',
-                            estimated_unit_cost: '',
-                            available_stock: Number(s.available)
-                        };
+                    setData((prev) => {
+                        const stocks = res?.data?.data ?? res?.data ?? [];
+                        const stockProductIds = new Set(stocks.map((s: any) => s.product_id));
+                        
+                        const mergedItems = stocks.map((s: any) => {
+                            const existing = prev.items.find(item => item.product_id === s.product_id);
+
+                            return existing ? { ...existing, available_stock: Number(s.available) } : {
+                                product_id: s.product_id,
+                                quantity_requested: '',
+                                quantity_on_hand: '',
+                                estimated_unit_cost: '',
+                                available_stock: Number(s.available)
+                            };
+                        });
+                        
+                        const preservedItems = prev.items
+                            .filter(item => item.product_id && !stockProductIds.has(item.product_id))
+                            .map(item => ({ ...item, available_stock: undefined }));
+                        
+                        const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+                        
+                        return { ...prev, items: finalItems };
                     });
-                    
-                    const preservedItems = data.items
-                        .filter(item => item.product_id && !stockProductIds.has(item.product_id))
-                        .map(item => ({ ...item, available_stock: undefined }));
-                    
-                    const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-                    
-                    setData('items', finalItems);
+                },
+                onError: (e) => {
+                    console.error('Failed to fetch location stock', e);
                 }
             });
         } else if (locationId) {
-            data.items.forEach((item, i) => {
-                if (item.product_id) checkStock(i, item.product_id, locationId);
+            data.items.forEach((item) => {
+                if (item.product_id) {
+                    checkStock(item.product_id, locationId);
+                }
             });
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
