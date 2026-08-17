@@ -1,4 +1,5 @@
-import { Head, Link, useForm, useHttp, router } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft, Save, Plus, Trash2, ArrowRightLeft,
     ShoppingCart, AlertCircle, BadgeCheck,
@@ -72,7 +73,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const isDepartmental = type === 'departmental';
     const isPurchase = type === 'purchase';
 
-    const http = useHttp();
+    const queryClient = useQueryClient();
     const { data, setData, post, put, processing, errors, transform } = useForm<{
         type: RequisitionType;
         reference: string;
@@ -152,109 +153,109 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         }
     };
 
-    const checkStock = useCallback((productId: string, locationOverride?: string) => {
+    const checkStock = useCallback(async (productId: string, locationOverride?: string) => {
         const locationId = locationOverride || (isPurchase ? data.requesting_location_id : data.issuing_location_id);
 
         if (!productId || !locationId) {
-return;
-}
+            return;
+        }
 
         const params = new URLSearchParams({ 
             product_id: productId, 
             location_id: locationId 
         }).toString();
 
-        http.get(`/procurement/requisitions/check-stock?${params}`, {
-            onSuccess: (res: any) => {
-                const available = res?.available ?? res?.data?.available ?? 0;
-                setData((prev) => {
-                    const items = [...prev.items];
-                    const idx = items.findIndex(item => item.product_id === productId);
-
-                    if (idx >= 0) {
-                        items[idx] = { ...items[idx], available_stock: Number(available) };
-                    }
-
-                    return { ...prev, items };
-                });
-            },
-            onError: (e) => {
-                console.error('Failed to check stock', e);
-                setData((prev) => {
-                    const items = [...prev.items];
-                    const idx = items.findIndex(item => item.product_id === productId);
-
-                    if (idx >= 0) {
-                        items[idx] = { ...items[idx], available_stock: undefined };
-                    }
-
-                    return { ...prev, items };
-                });
-            }
-        });
-    }, [data.requesting_location_id, data.issuing_location_id, isPurchase, http]);
-
-    // Re-check all items if location changes
-    const issuingRef = useRef(data.issuing_location_id);
-    const requestingRef = useRef(data.requesting_location_id);
-
-    useLayoutEffect(() => {
-        issuingRef.current = data.issuing_location_id;
-        requestingRef.current = data.requesting_location_id;
-
-        const controller = new AbortController();
-
-        const currentIssuing = data.issuing_location_id;
-        const currentRequesting = data.requesting_location_id;
-
-        if (isDepartmental && currentIssuing) {
-            http.get(`/procurement/requisitions/location-stock?location_id=${currentIssuing}`, {
-                onSuccess: (res: any) => {
-                    if (issuingRef.current !== currentIssuing) return;
-
-                    setData((prev) => {
-                        const stocks = res?.data?.data ?? res?.data ?? [];
-                        const stockProductIds = new Set(stocks.map((s: any) => s.product_id));
-
-                        const mergedItems = stocks.map((s: any) => {
-                            const existing = prev.items.find(item => item.product_id === s.product_id);
-
-                            return existing ? { ...existing, available_stock: Number(s.available) } : {
-                                product_id: s.product_id,
-                                quantity_requested: '',
-                                quantity_on_hand: '',
-                                estimated_unit_cost: '',
-                                available_stock: Number(s.available)
-                            };
-                        });
-
-                        const preservedItems = prev.items
-                            .filter(item => item.product_id && !stockProductIds.has(item.product_id))
-                            .map(item => ({ ...item, available_stock: undefined }));
-
-                        const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-
-                        return { ...prev, items: finalItems };
-                    });
-                },
-                onError: (e) => {
-                    if (e?.name !== 'AbortError') {
-                        console.error('Failed to fetch location stock', e);
-                    }
-                }
+        try {
+            const res = await queryClient.fetchQuery({
+                queryKey: ['check-stock', productId, locationId],
+                queryFn: () => fetch(`/procurement/requisitions/check-stock?${params}`).then((r: any) => r.json()),
+                staleTime: 1000 * 60, // 1 minute
             });
-        } else if (currentRequesting || currentIssuing) {
-            const locationId = currentRequesting || currentIssuing;
-            const itemsToCheck = data.items.filter(item => item.product_id);
+            const available = res?.available ?? res?.data?.available ?? 0;
+            setData((prev) => {
+                const items = [...prev.items];
+                const idx = items.findIndex(item => item.product_id === productId);
 
-            itemsToCheck.forEach((item) => {
-                checkStock(item.product_id, locationId);
+                if (idx >= 0) {
+                    items[idx] = { ...items[idx], available_stock: Number(available) };
+                }
+
+                return { ...prev, items };
+            });
+        } catch (e) {
+            console.error('Failed to check stock', e);
+            setData((prev) => {
+                const items = [...prev.items];
+                const idx = items.findIndex(item => item.product_id === productId);
+
+                if (idx >= 0) {
+                    items[idx] = { ...items[idx], available_stock: undefined };
+                }
+
+                return { ...prev, items };
             });
         }
+    }, [data.requesting_location_id, data.issuing_location_id, isPurchase, queryClient]);
 
-        return () => controller.abort();
+    // Fetch location stock using TanStack Query
+    const { data: locationStock, isSuccess: isLocationStockSuccess } = useQuery({
+        queryKey: ['location-stock', data.issuing_location_id],
+        queryFn: () => fetch(`/procurement/requisitions/location-stock?location_id=${data.issuing_location_id}`).then((res: any) => res.json()),
+        enabled: isDepartmental && !!data.issuing_location_id,
+        staleTime: 1000 * 60 * 2, // 2 minutes
+    });
+
+    React.useEffect(() => {
+        if (isDepartmental && isLocationStockSuccess && locationStock) {
+            setData((prev) => {
+                // Ensure we don't unnecessarily overwrite data if it hasn't changed.
+                // We'll trust that the dependencies (locationStock, issuing_location_id) changing is sufficient.
+                
+                const stocks = locationStock?.data?.data ?? locationStock?.data ?? locationStock ?? [];
+                
+                // If the response is an array (which the previous code expected: res?.data?.data ?? res?.data ?? [])
+                // or if it's `{ items: [...] }` as I saw earlier `res.items`.
+                // Let's handle both.
+                const itemsArray = Array.isArray(stocks) ? stocks : (stocks.items || []);
+                const stockProductIds = new Set(itemsArray.map((s: any) => s.product_id?.toString()));
+
+                const mergedItems = itemsArray.map((s: any) => {
+                    const sProductId = s.product_id?.toString();
+                    const existing = prev.items.find(item => item.product_id === sProductId);
+
+                    return existing ? { ...existing, available_stock: Number(s.available ?? s.quantity) } : {
+                        product_id: sProductId,
+                        quantity_requested: '',
+                        quantity_on_hand: s.quantity || '',
+                        estimated_unit_cost: s.unit_cost || '',
+                        available_stock: Number(s.available ?? s.quantity)
+                    };
+                });
+
+                const preservedItems = prev.items
+                    .filter(item => item.product_id && !stockProductIds.has(item.product_id))
+                    .map(item => ({ ...item, available_stock: undefined }));
+
+                const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+
+                return { ...prev, items: finalItems };
+            });
+        }
+    }, [isLocationStockSuccess, locationStock, isDepartmental]);
+
+    // Handle checkStock for other non-departmental location changes
+    React.useEffect(() => {
+        if (!isDepartmental) {
+            const locationId = data.requesting_location_id || data.issuing_location_id;
+            if (locationId) {
+                const itemsToCheck = data.items.filter(item => item.product_id);
+                itemsToCheck.forEach((item) => {
+                    checkStock(item.product_id, locationId);
+                });
+            }
+        }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [data.issuing_location_id, data.requesting_location_id, checkStock, isDepartmental]);
+    }, [data.issuing_location_id, data.requesting_location_id, isDepartmental, checkStock]);
 
     const totalEstimated = data.items.reduce(
         (sum, row) => sum + (Number(row.quantity_requested) * Number(row.estimated_unit_cost || 0)),
