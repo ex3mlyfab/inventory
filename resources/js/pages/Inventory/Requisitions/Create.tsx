@@ -152,12 +152,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     })), [stores]);
 
     const departmentOptions = useMemo(() => departments.map(d => ({
-        label: `${d.name} (${d.code)}`,
+        label: `${d.name} (${d.code})`,
         value: d.id
     })), [departments]);
 
     const supplierOptions = useMemo(() => suppliers.map(s => ({
-        label: `${s.name} (${s.code)}`,
+        label: `${s.name} (${s.code})`,
         value: s.id
     })), [suppliers]);
 
