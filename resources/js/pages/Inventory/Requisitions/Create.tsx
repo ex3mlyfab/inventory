@@ -83,7 +83,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const isPurchase = type === 'purchase';
 
     const queryClient = useQueryClient();
-    const { data, setData, post, put, processing, errors, transform } = useForm<{
+    const { data, setData, post, put, processing, errors, transform, watch } = useForm<{
         type: RequisitionType;
         reference: string;
         status?: 'draft' | 'submitted';
@@ -122,11 +122,14 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const isEditing = !!requisition;
 
+    // Watch issuing_location_id for reactive query key
+    const issuingLocationId = watch('issuing_location_id');
+
     // ── Fetch products available at issuing store ─────────────────────────
     const { data: storeProducts, isLoading: isLoadingStoreProducts, isSuccess: isStoreProductsSuccess } = useQuery({
-        queryKey: ['store-products', data.issuing_location_id],
-        queryFn: () => fetch(`/procurement/requisitions/products-by-store/${data.issuing_location_id}`).then((res: any) => res.json()),
-        enabled: isDepartmental && !!data.issuing_location_id,
+        queryKey: ['store-products', issuingLocationId],
+        queryFn: () => fetch(`/procurement/requisitions/products-by-store/${issuingLocationId}`).then((res: any) => res.json()),
+        enabled: isDepartmental && !!issuingLocationId,
         staleTime: 1000 * 60 * 2,
     });
 
