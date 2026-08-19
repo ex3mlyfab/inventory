@@ -119,6 +119,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('requisitions/create', [RequisitionController::class, 'create'])->name('requisitions.create');
         Route::get('requisitions/check-stock', [RequisitionController::class, 'checkStock'])->name('requisitions.check-stock');
         Route::get('requisitions/location-stock', [RequisitionController::class, 'locationStock'])->name('requisitions.location-stock');
+        Route::get('requisitions/products-by-store/{location_id}', [RequisitionController::class, 'productsByStore'])->name('requisitions.products-by-store');
         Route::post('requisitions', [RequisitionController::class, 'store'])->name('requisitions.store');
         Route::get('requisitions/{requisition}', [RequisitionController::class, 'show'])->name('requisitions.show');
         Route::get('requisitions/{requisition}/edit', [RequisitionController::class, 'edit'])->name('requisitions.edit');

@@ -5,7 +5,7 @@ import {
     ShoppingCart, AlertCircle, BadgeCheck,
     Package, ClipboardList, Hash, Building2, Loader2
 } from 'lucide-react';
-import React, { useState, useMemo, useRef, useEffect as useLayoutEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -61,6 +61,15 @@ interface LineItem {
     available_stock?: number;
 }
 
+interface StoreProduct {
+    id: string;
+    name: string;
+    sku: string;
+    unit_of_measure?: string;
+    is_expirable: boolean;
+    available: number;
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
 const SELECT_CLS = 'flex h-10 w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20';
@@ -113,12 +122,29 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const isEditing = !!requisition;
 
+    // ── Fetch products available at issuing store ─────────────────────────
+    const { data: storeProducts, isLoading: isLoadingStoreProducts, isSuccess: isStoreProductsSuccess } = useQuery({
+        queryKey: ['store-products', data.issuing_location_id],
+        queryFn: () => fetch(`/procurement/requisitions/products-by-store/${data.issuing_location_id}`).then((res: any) => res.json()),
+        enabled: isDepartmental && !!data.issuing_location_id,
+        staleTime: 1000 * 60 * 2,
+    });
+
     // ── Memoized Options ─────────────────────────────────────────────────
 
-    const productOptions = useMemo(() => products.map(p => ({
-        label: `${p.name} — ${p.sku}${p.unit_of_measure ? ` (${p.unit_of_measure.abbreviation})` : ''}`,
-        value: p.id
-    })), [products]);
+    // For departmental: filter by issuing store. For others: show all products.
+    const productOptions = useMemo(() => {
+        const baseProducts = isDepartmental && isStoreProductsSuccess && storeProducts
+            ? storeProducts.products
+            : products;
+
+        return baseProducts.map(p => ({
+            label: `${p.name} — ${p.sku}${p.unit_of_measure ? ` (${p.unit_of_measure})` : ''}`,
+            value: p.id,
+            // Attach available stock for quick display
+            available: (p as StoreProduct).available ?? undefined,
+        }));
+    }, [products, isDepartmental, isStoreProductsSuccess, storeProducts]);
 
     const storeOptions = useMemo(() => stores.map(l => ({
         label: `${l.name} (${l.code})`,
@@ -126,14 +152,16 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     })), [stores]);
 
     const departmentOptions = useMemo(() => departments.map(d => ({
-        label: `${d.name} (${d.code})`,
+        label: `${d.name} (${d.code)}`,
         value: d.id
     })), [departments]);
 
     const supplierOptions = useMemo(() => suppliers.map(s => ({
-        label: `${s.name} (${s.code})`,
+        label: `${s.name} (${s.code)}`,
         value: s.id
     })), [suppliers]);
+
+    // ── Actions ───────────────────────────────────────────────────────────
 
     const addItem = () =>
         setData('items', [...data.items, { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
@@ -160,16 +188,16 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             return;
         }
 
-        const params = new URLSearchParams({ 
-            product_id: productId, 
-            location_id: locationId 
+        const params = new URLSearchParams({
+            product_id: productId,
+            location_id: locationId
         }).toString();
 
         try {
             const res = await queryClient.fetchQuery({
                 queryKey: ['check-stock', productId, locationId],
                 queryFn: () => fetch(`/procurement/requisitions/check-stock?${params}`).then((r: any) => r.json()),
-                staleTime: 1000 * 60, // 1 minute
+                staleTime: 1000 * 60,
             });
             const available = res?.available ?? res?.data?.available ?? 0;
             setData((prev) => {
@@ -197,54 +225,43 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         }
     }, [data.requesting_location_id, data.issuing_location_id, isPurchase, queryClient]);
 
-    // Fetch location stock using TanStack Query
-    const { data: locationStock, isSuccess: isLocationStockSuccess } = useQuery({
-        queryKey: ['location-stock', data.issuing_location_id],
-        queryFn: () => fetch(`/procurement/requisitions/location-stock?location_id=${data.issuing_location_id}`).then((res: any) => res.json()),
-        enabled: isDepartmental && !!data.issuing_location_id,
-        staleTime: 1000 * 60 * 2, // 2 minutes
-    });
-
-    React.useEffect(() => {
-        if (isDepartmental && isLocationStockSuccess && locationStock) {
+    // ── Auto-populate line items when issuing store changes (Departmental) ──
+    useEffect(() => {
+        if (isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length) {
             setData((prev) => {
-                // Ensure we don't unnecessarily overwrite data if it hasn't changed.
-                // We'll trust that the dependencies (locationStock, issuing_location_id) changing is sufficient.
-                
-                const stocks = locationStock?.data?.data ?? locationStock?.data ?? locationStock ?? [];
-                
-                // If the response is an array (which the previous code expected: res?.data?.data ?? res?.data ?? [])
-                // or if it's `{ items: [...] }` as I saw earlier `res.items`.
-                // Let's handle both.
-                const itemsArray = Array.isArray(stocks) ? stocks : (stocks.items || []);
-                const stockProductIds = new Set(itemsArray.map((s: any) => s.product_id?.toString()));
+                // Build new items from store products with available stock
+                const newItems = storeProducts.products.map((p: StoreProduct) => ({
+                    product_id: p.id,
+                    quantity_requested: '',
+                    quantity_on_hand: '',
+                    estimated_unit_cost: '',
+                    available_stock: p.available,
+                }));
 
-                const mergedItems = itemsArray.map((s: any) => {
-                    const sProductId = s.product_id?.toString();
-                    const existing = prev.items.find(item => item.product_id === sProductId);
-
-                    return existing ? { ...existing, available_stock: Number(s.available ?? s.quantity) } : {
-                        product_id: sProductId,
-                        quantity_requested: '',
-                        quantity_on_hand: s.quantity || '',
-                        estimated_unit_cost: s.unit_cost || '',
-                        available_stock: Number(s.available ?? s.quantity)
+                // If editing, preserve existing selections that match
+                if (isEditing && requisition?.items?.length) {
+                    const existingMap = new Map(requisition.items.map(i => [i.product_id, i]));
+                    return {
+                        ...prev,
+                        items: newItems.map(item => {
+                            const existing = existingMap.get(item.product_id);
+                            return existing ? {
+                                ...item,
+                                quantity_requested: existing.quantity_requested,
+                                quantity_on_hand: existing.quantity_on_hand,
+                                estimated_unit_cost: existing.estimated_unit_cost,
+                            } : item;
+                        })
                     };
-                });
+                }
 
-                const preservedItems = prev.items
-                    .filter(item => item.product_id && !stockProductIds.has(item.product_id))
-                    .map(item => ({ ...item, available_stock: undefined }));
-
-                const finalItems = mergedItems.length > 0 ? mergedItems : (preservedItems.length > 0 ? preservedItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-
-                return { ...prev, items: finalItems };
+                return { ...prev, items: newItems.length > 0 ? newItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }] };
             });
         }
-    }, [isLocationStockSuccess, locationStock, isDepartmental]);
+    }, [isStoreProductsSuccess, storeProducts, isDepartmental, isEditing, requisition]);
 
-    // Handle checkStock for other non-departmental location changes
-    React.useEffect(() => {
+    // Handle checkStock for non-departmental location changes
+    useEffect(() => {
         if (!isDepartmental) {
             const locationId = data.requesting_location_id || data.issuing_location_id;
             if (locationId) {
@@ -265,13 +282,13 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setData('status', 'submitted');
-        
+
         if (isDepartmental) {
             transform((currentData) => ({
                 ...currentData,
-                items: currentData.items.filter(item => 
-                    item.product_id && 
-                    item.quantity_requested && 
+                items: currentData.items.filter(item =>
+                    item.product_id &&
+                    item.quantity_requested &&
                     Number(item.quantity_requested) > 0
                 )
             }));
@@ -287,13 +304,13 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const saveDraft = (e: React.FormEvent) => {
         e.preventDefault();
         setData('status', 'draft');
-        
+
         if (isDepartmental) {
             transform((currentData) => ({
                 ...currentData,
-                items: currentData.items.filter(item => 
-                    item.product_id && 
-                    item.quantity_requested && 
+                items: currentData.items.filter(item =>
+                    item.product_id &&
+                    item.quantity_requested &&
                     Number(item.quantity_requested) > 0
                 )
             }));
@@ -505,7 +522,14 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             onChange={(val) => setData('issuing_location_id', val)}
                                             placeholder="Select issuing store…"
                                             className="bg-muted/30 border-none"
+                                            disabled={isLoadingStoreProducts}
                                         />
+                                        {isLoadingStoreProducts && (
+                                            <div className="flex items-center gap-2 text-xs text-blue-600">
+                                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                Loading products from store…
+                                            </div>
+                                        )}
                                         <InputError message={errors.issuing_location_id} />
                                     </div>
                                 </>
@@ -545,13 +569,18 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 <Package className="h-4 w-4" />
                             </div>
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-text-primary">Requested Line Items</h3>
+                            {isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length && (
+                                <span className="ml-2 px-2 py-0.5 text-[9px] font-bold bg-blue-50 text-blue-700 rounded-full">
+                                    {storeProducts.products.length} products available
+                                </span>
+                            )}
                         </div>
                         <CardContent className="p-6 space-y-4">
-                            {/* Column headers */}
+                            {/* Column headers - Desktop only */}
                             <div className="hidden md:grid grid-cols-12 gap-3 text-[10px] font-bold uppercase tracking-widest text-text-muted px-1">
                                 <div className={cn(
-                                    isPurchase ? "col-span-5" : 
-                                    isDepartmental ? "col-span-7" : 
+                                    isPurchase ? "col-span-5" :
+                                    isDepartmental ? "col-span-7" :
                                     "col-span-5"
                                 )}>Product</div>
                                 {(isInternal || isPurchase) && <div className="col-span-2 text-center">Available</div>}
@@ -575,9 +604,9 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                     )}
 
                                     <div className={cn(
-                                        "w-full", 
-                                        isPurchase ? "md:col-span-5" : 
-                                        isDepartmental ? "md:col-span-7" : 
+                                        "w-full",
+                                        isPurchase ? "md:col-span-5" :
+                                        isDepartmental ? "md:col-span-7" :
                                         "md:col-span-5"
                                     )}>
                                         <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Product</Label>
@@ -652,8 +681,6 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             </div>
                                         )}
                                     </div>
-
-
 
                                     <div className="hidden md:flex md:col-span-1 justify-end pt-1">
                                         {data.items.length > 1 && (

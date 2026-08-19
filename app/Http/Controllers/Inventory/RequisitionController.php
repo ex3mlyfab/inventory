@@ -269,6 +269,49 @@ class RequisitionController extends Controller
         ]);
     }
 
+    /**
+     * Get products with available stock for a specific issuing store.
+     * Returns product details + available quantity for dropdown population.
+     */
+    public function productsByStore(Request $request)
+    {
+        Gate::authorize('requisitions.view');
+
+        $request->validate([
+            'location_id' => ['required', 'ulid', 'exists:storage_locations,id'],
+        ]);
+
+        $stocks = StockBatch::where('storage_location_id', $request->location_id)
+            ->where('status', 'active')
+            ->select('product_id', DB::raw('SUM(quantity_on_hand) as available'))
+            ->groupBy('product_id')
+            ->having('available', '>', 0)
+            ->get();
+
+        $productIds = $stocks->pluck('product_id');
+
+        $products = Product::with('unitOfMeasure')
+            ->where('status', 'active')
+            ->whereIn('id', $productIds)
+            ->orderBy('name')
+            ->get(['id', 'name', 'sku', 'unit_of_measure_id', 'is_expirable'])
+            ->map(function ($product) use ($stocks) {
+                $stock = $stocks->firstWhere('product_id', $product->id);
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'sku' => $product->sku,
+                    'unit_of_measure' => $product->unitOfMeasure?->abbreviation,
+                    'is_expirable' => $product->is_expirable,
+                    'available' => (int) $stock->available,
+                ];
+            });
+
+        return response()->json([
+            'products' => $products,
+        ]);
+    }
+
     // ── Store ──────────────────────────────────────────────────────────
 
     public function store(Request $request)
