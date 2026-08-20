@@ -5,7 +5,7 @@ import {
     ShoppingCart, AlertCircle, BadgeCheck,
     Package, ClipboardList, Hash, Building2, Loader2
 } from 'lucide-react';
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -181,7 +181,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     }, [data.issuing_location_id]);
 
     // ── Fetch products available at issuing store ─────────────────────────
-    const { data: storeProducts, isLoading: isLoadingStoreProducts, isSuccess: isStoreProductsSuccess, isError: isStoreProductsError } = useQuery<ProductsByStoreResponse>({
+    const { data: storeProducts, isLoading: isLoadingStoreProducts, isError: isStoreProductsError } = useQuery<ProductsByStoreResponse>({
         queryKey: ['store-products', issuingLocationId],
         queryFn: async ({ queryKey }) => {
             const [, locationId] = queryKey;
@@ -205,8 +205,9 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     // ── Memoized Options ─────────────────────────────────────────────────
 
+    // Derive product options directly from query data — no success flag needed
     const productOptions = useMemo(() => {
-        const baseProducts = isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length
+        const baseProducts = isDepartmental && storeProducts?.products?.length
             ? storeProducts.products
             : products;
 
@@ -215,7 +216,37 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             value: p.id,
             available: (p as StoreProduct).available ?? undefined,
         }));
-    }, [products, isDepartmental, isStoreProductsSuccess, storeProducts]);
+    }, [products, isDepartmental, storeProducts]);
+
+    // Derive line items directly from store products — ensures items are always in sync
+    const derivedItems = useMemo(() => {
+        if (!isDepartmental) return null;
+        if (!storeProducts?.products?.length) return null;
+
+        const existingMap = new Map(
+            (isEditing && requisition?.items?.length)
+                ? requisition.items.map(i => [i.product_id, i])
+                : []
+        );
+
+        return storeProducts.products.map((p: StoreProduct) => {
+            const existing = existingMap.get(p.id);
+            return {
+                product_id: p.id,
+                quantity_requested: existing?.quantity_requested ?? '',
+                quantity_on_hand: existing?.quantity_on_hand ?? '',
+                estimated_unit_cost: existing?.estimated_unit_cost ?? '',
+                available_stock: p.available,
+            };
+        });
+    }, [isDepartmental, storeProducts, isEditing, requisition]);
+
+    // Sync derived items into form state when they become available
+    useEffect(() => {
+        if (derivedItems !== null) {
+            setData('items', derivedItems);
+        }
+    }, [derivedItems, setData]);
 
     const storeOptions = useMemo(() => stores.map(l => ({
         label: l.name + ' (' + l.code + ')',
@@ -294,36 +325,6 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             });
         }
     }, [data.requesting_location_id, data.issuing_location_id, isPurchase, queryClient]);
-
-    // ── Auto-populate line items when issuing store changes (Departmental) ──
-    useEffect(() => {
-        if (!isDepartmental) return;
-
-        if (isStoreProductsSuccess && storeProducts?.products?.length) {
-            const existingMap = new Map(
-                (isEditing && requisition?.items?.length)
-                    ? requisition.items.map(i => [i.product_id, i])
-                    : []
-            );
-
-            const newItems = storeProducts.products.map((p: StoreProduct) => {
-                const existing = existingMap.get(p.id);
-                return {
-                    product_id: p.id,
-                    quantity_requested: existing?.quantity_requested ?? '',
-                    quantity_on_hand: existing?.quantity_on_hand ?? '',
-                    estimated_unit_cost: existing?.estimated_unit_cost ?? '',
-                    available_stock: p.available,
-                };
-            });
-
-            setData('items', newItems.length > 0 ? newItems : [
-                { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }
-            ]);
-        } else if (!isLoadingStoreProducts && issuingLocationId && !isStoreProductsSuccess && !isStoreProductsError) {
-            // Still loading or no data — don't touch items yet
-        }
-    }, [isStoreProductsSuccess, isLoadingStoreProducts, isStoreProductsError, storeProducts, isDepartmental, issuingLocationId, isEditing, requisition]);
 
     // Handle checkStock for non-departmental location changes
     useEffect(() => {
@@ -623,7 +624,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 <Package className="h-4 w-4" />
                             </div>
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-text-primary">Requested Line Items</h3>
-                            {isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length && (
+                            {isDepartmental && storeProducts?.products?.length && (
                                 <span className="ml-2 px-2 py-0.5 text-[9px] font-bold bg-blue-50 text-blue-700 rounded-full">
                                     {storeProducts.products.length} products loaded
                                 </span>
