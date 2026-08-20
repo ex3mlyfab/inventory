@@ -5,7 +5,7 @@ import {
     ShoppingCart, AlertCircle, BadgeCheck,
     Package, ClipboardList, Hash, Building2, Loader2
 } from 'lucide-react';
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import InputError from '@/components/input-error';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
@@ -78,6 +78,55 @@ interface ProductsByStoreResponse {
 
 const CARD_HEADER_CLS = 'px-6 py-4 bg-muted/30 border-b border-border/50 flex items-center gap-2';
 
+const SELECT_INPUT_CLS = 'flex h-10 w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20 appearance-none';
+
+// ── Mobile Select Component ──────────────────────────────────────────────
+// Native <select> that works reliably on mobile instead of Radix Popover Combobox
+function MobileSelect({
+    label,
+    value,
+    onChange,
+    options,
+    placeholder,
+    disabled,
+    error,
+    className,
+}: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    options: { label: string; value: string }[];
+    placeholder: string;
+    disabled?: boolean;
+    error?: string;
+    className?: string;
+}) {
+    return (
+        <div className={className}>
+            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
+                {label}
+            </Label>
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                disabled={disabled}
+                className={cn(
+                    SELECT_INPUT_CLS,
+                    disabled && 'opacity-50 cursor-not-allowed',
+                    'min-h-[44px] text-base' // 44px touch target, 16px font prevents iOS zoom
+                )}
+                style={{ fontSize: '16px' }}
+            >
+                <option value="">{placeholder}</option>
+                {options.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+            </select>
+            {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+        </div>
+    );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────
 
 export default function RequisitionCreate({ type, stores, departmentalStores, products, suppliers, departments, defaultRef, user, requisition }: Props) {
@@ -144,7 +193,8 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                 credentials: 'same-origin',
             });
             if (!res.ok) {
-                throw new Error(`Failed to fetch products: ${res.status}`);
+                const text = await res.text();
+                throw new Error(`HTTP ${res.status}: ${text.substring(0, 200)}`);
             }
             return res.json();
         },
@@ -155,23 +205,19 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     // ── Memoized Options ─────────────────────────────────────────────────
 
-    // For departmental: filter by issuing store. For others: show all products.
     const productOptions = useMemo(() => {
         const baseProducts = isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length
             ? storeProducts.products
             : products;
 
-        return baseProducts.map(p => {
-            const unit = p.unit_of_measure ? ' (' + p.unit_of_measure + ')' : '';
-            return {
-                label: p.name + ' \u2014 ' + p.sku + unit,
-                value: p.id,
-                available: (p as StoreProduct).available ?? undefined,
-            };
-        });
+        return baseProducts.map(p => ({
+            label: p.name + ' \u2014 ' + p.sku + (p.unit_of_measure ? ' (' + p.unit_of_measure + ')' : ''),
+            value: p.id,
+            available: (p as StoreProduct).available ?? undefined,
+        }));
     }, [products, isDepartmental, isStoreProductsSuccess, storeProducts]);
 
-const storeOptions = useMemo(() => stores.map(l => ({
+    const storeOptions = useMemo(() => stores.map(l => ({
         label: l.name + ' (' + l.code + ')',
         value: l.id
     })), [stores]);
@@ -231,11 +277,9 @@ const storeOptions = useMemo(() => stores.map(l => ({
             setData((prev) => {
                 const items = [...prev.items];
                 const idx = items.findIndex(item => item.product_id === productId);
-
                 if (idx >= 0) {
                     items[idx] = { ...items[idx], available_stock: Number(available) };
                 }
-
                 return { ...prev, items };
             });
         } catch (e) {
@@ -243,11 +287,9 @@ const storeOptions = useMemo(() => stores.map(l => ({
             setData((prev) => {
                 const items = [...prev.items];
                 const idx = items.findIndex(item => item.product_id === productId);
-
                 if (idx >= 0) {
                     items[idx] = { ...items[idx], available_stock: undefined };
                 }
-
                 return { ...prev, items };
             });
         }
@@ -255,36 +297,33 @@ const storeOptions = useMemo(() => stores.map(l => ({
 
     // ── Auto-populate line items when issuing store changes (Departmental) ──
     useEffect(() => {
-        if (isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length) {
-            const newItems = storeProducts.products.map((p: StoreProduct) => ({
-                product_id: p.id,
-                quantity_requested: '',
-                quantity_on_hand: '',
-                estimated_unit_cost: '',
-                available_stock: p.available,
-            }));
+        if (!isDepartmental) return;
 
-            // If editing, preserve existing selections that match
-            let finalItems = newItems;
-            if (isEditing && requisition?.items?.length) {
-                const existingMap = new Map(requisition.items.map(i => [i.product_id, i]));
-                finalItems = newItems.map(item => {
-                    const existing = existingMap.get(item.product_id);
-                    return existing ? {
-                        ...item,
-                        quantity_requested: existing.quantity_requested,
-                        quantity_on_hand: existing.quantity_on_hand,
-                        estimated_unit_cost: existing.estimated_unit_cost,
-                    } : item;
-                });
-            }
+        if (isStoreProductsSuccess && storeProducts?.products?.length) {
+            const existingMap = new Map(
+                (isEditing && requisition?.items?.length)
+                    ? requisition.items.map(i => [i.product_id, i])
+                    : []
+            );
 
-            setData('items', finalItems.length > 0 ? finalItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-        } else if (isDepartmental && !isLoadingStoreProducts && issuingLocationId && (!storeProducts?.products?.length)) {
-            // Store selected but no products available
-            setData('items', [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+            const newItems = storeProducts.products.map((p: StoreProduct) => {
+                const existing = existingMap.get(p.id);
+                return {
+                    product_id: p.id,
+                    quantity_requested: existing?.quantity_requested ?? '',
+                    quantity_on_hand: existing?.quantity_on_hand ?? '',
+                    estimated_unit_cost: existing?.estimated_unit_cost ?? '',
+                    available_stock: p.available,
+                };
+            });
+
+            setData('items', newItems.length > 0 ? newItems : [
+                { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }
+            ]);
+        } else if (!isLoadingStoreProducts && issuingLocationId && !isStoreProductsSuccess && !isStoreProductsError) {
+            // Still loading or no data — don't touch items yet
         }
-    }, [isStoreProductsSuccess, isLoadingStoreProducts, storeProducts, isDepartmental, issuingLocationId, isEditing, requisition]);
+    }, [isStoreProductsSuccess, isLoadingStoreProducts, isStoreProductsError, storeProducts, isDepartmental, issuingLocationId, isEditing, requisition]);
 
     // Handle checkStock for non-departmental location changes
     useEffect(() => {
@@ -508,87 +547,70 @@ const storeOptions = useMemo(() => stores.map(l => ({
                             {(isInternal || isDepartmental) ? (
                                 <>
                                     {isInternal ? (
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                                                Requesting Store <span className="text-brand">*</span>
-                                            </Label>
-                                            <Combobox
-                                                options={storeOptions}
-                                                value={data.requesting_location_id}
-                                                onChange={(val) => setData('requesting_location_id', val)}
-                                                placeholder="Select requesting store…"
-                                                className="bg-muted/30 border-none"
-                                            />
-                                            <InputError message={errors.requesting_location_id} />
-                                        </div>
+                                        <MobileSelect
+                                            label="Requesting Store *"
+                                            value={data.requesting_location_id}
+                                            onChange={(val) => setData('requesting_location_id', val)}
+                                            options={storeOptions}
+                                            placeholder="Select requesting store…"
+                                            error={errors.requesting_location_id}
+                                        />
                                     ) : (
-                                        <div className="space-y-2">
-                                            <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">
-                                                Requesting Department <span className="text-brand">*</span>
-                                            </Label>
-                                            <Combobox
-                                                options={departmentOptions}
-                                                value={data.requesting_department_id}
-                                                onChange={(val) => setData('requesting_department_id', val)}
-                                                placeholder="Select department…"
-                                                className="bg-muted/30 border-none"
-                                            />
-                                            <InputError message={errors.requesting_department_id} />
-                                        </div>
+                                        <MobileSelect
+                                            label="Requesting Department *"
+                                            value={data.requesting_department_id}
+                                            onChange={(val) => setData('requesting_department_id', val)}
+                                            options={departmentOptions}
+                                            placeholder="Select department…"
+                                            error={errors.requesting_department_id}
+                                        />
                                     )}
 
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">
+                                        <Label className="text-xs font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
                                             Issuing Store <span className="text-brand">*</span>
                                             <span className="ml-2 text-[10px] normal-case font-normal italic text-text-muted">(source of stock)</span>
                                         </Label>
-                                        <Combobox
-                                            options={storeOptions.filter(o => o.value !== data.requesting_location_id)}
+                                        <MobileSelect
                                             value={data.issuing_location_id}
                                             onChange={(val) => setData('issuing_location_id', val)}
+                                            options={storeOptions.filter(o => o.value !== data.requesting_location_id)}
                                             placeholder="Select issuing store…"
-                                            className="bg-muted/30 border-none"
                                             disabled={isLoadingStoreProducts}
+                                            error={errors.issuing_location_id}
                                         />
                                         {isLoadingStoreProducts && (
-                                            <div className="flex items-center gap-2 text-xs text-blue-600">
+                                            <div className="flex items-center gap-2 text-xs text-blue-600 mt-1">
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 Loading products from store…
                                             </div>
                                         )}
                                         {isStoreProductsError && (
-                                            <div className="flex items-center gap-2 text-xs text-destructive">
+                                            <div className="flex items-center gap-2 text-xs text-destructive mt-1">
                                                 <AlertCircle className="h-3.5 w-3.5" />
-                                                Failed to load products. Please try again.
+                                                Failed to load products.
                                             </div>
                                         )}
-                                        <InputError message={errors.issuing_location_id} />
                                     </div>
                                 </>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">Target Store (Receiving) <span className="text-brand">*</span></Label>
-                                        <Combobox
-                                            options={storeOptions}
-                                            value={data.requesting_location_id}
-                                            onChange={(val) => setData('requesting_location_id', val)}
-                                            placeholder="Select store to restock…"
-                                            className="bg-muted/30 border-none"
-                                        />
-                                        <InputError message={errors.requesting_location_id} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label className="text-xs font-bold uppercase tracking-wider text-text-muted">Preferred Supplier (Optional)</Label>
-                                        <Combobox
-                                            options={supplierOptions}
-                                            value={data.supplier_id}
-                                            onChange={(val) => setData('supplier_id', val)}
-                                            placeholder="No preference"
-                                            className="bg-muted/30 border-none"
-                                        />
-                                        <InputError message={(errors as any).supplier_id} />
-                                    </div>
+                                    <MobileSelect
+                                        label="Target Store (Receiving) *"
+                                        value={data.requesting_location_id}
+                                        onChange={(val) => setData('requesting_location_id', val)}
+                                        options={storeOptions}
+                                        placeholder="Select store to restock…"
+                                        error={errors.requesting_location_id}
+                                    />
+                                    <MobileSelect
+                                        label="Preferred Supplier (Optional)"
+                                        value={data.supplier_id}
+                                        onChange={(val) => setData('supplier_id', val)}
+                                        options={supplierOptions}
+                                        placeholder="No preference"
+                                        error={(errors as any).supplier_id}
+                                    />
                                 </div>
                             )}
                         </CardContent>
@@ -603,7 +625,7 @@ const storeOptions = useMemo(() => stores.map(l => ({
                             <h3 className="text-[10px] font-black uppercase tracking-widest text-text-primary">Requested Line Items</h3>
                             {isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length && (
                                 <span className="ml-2 px-2 py-0.5 text-[9px] font-bold bg-blue-50 text-blue-700 rounded-full">
-                                    {storeProducts.products.length} products available
+                                    {storeProducts.products.length} products loaded
                                 </span>
                             )}
                         </div>
@@ -635,6 +657,7 @@ const storeOptions = useMemo(() => stores.map(l => ({
                                         </button>
                                     )}
 
+                                    {/* Product select — uses Combobox on desktop, native select on mobile */}
                                     <div className={cn(
                                         "w-full",
                                         isPurchase ? "md:col-span-5" :
@@ -642,18 +665,35 @@ const storeOptions = useMemo(() => stores.map(l => ({
                                         "md:col-span-5"
                                     )}>
                                         <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Product</Label>
-                                        <Combobox
-                                            options={productOptions}
-                                            value={item.product_id}
-                                            onChange={(val) => updateItem(i, 'product_id', val)}
-                                            placeholder="Select product…"
-                                            className="bg-muted/30 border-none"
-                                        />
+                                        {/* Desktop: Combobox with search. Mobile: native select for reliability */}
+                                        <div className="hidden md:block">
+                                            <Combobox
+                                                options={productOptions}
+                                                value={item.product_id}
+                                                onChange={(val) => updateItem(i, 'product_id', val)}
+                                                placeholder="Select product…"
+                                                className="bg-muted/30 border-none"
+                                            />
+                                        </div>
+                                        <div className="md:hidden">
+                                            <select
+                                                value={item.product_id}
+                                                onChange={(e) => updateItem(i, 'product_id', e.target.value)}
+                                                className={cn(SELECT_INPUT_CLS, 'min-h-[44px] text-base appearance-none')}
+                                                style={{ fontSize: '16px' }}
+                                            >
+                                                <option value="">Select product…</option>
+                                                {productOptions.map(opt => (
+                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                         {(errors as any)[`items.${i}.product_id`] && (
                                             <p className="text-xs text-destructive mt-1">{(errors as any)[`items.${i}.product_id`]}</p>
                                         )}
                                     </div>
 
+                                    {/* Stock status - Internal/Purchase only */}
                                     {(isInternal || isPurchase) && (
                                         <div className="md:col-span-2 flex flex-col items-start md:items-center justify-center md:pt-2 w-full">
                                             <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted md:hidden mb-1.5 block">Stock Status</Label>
@@ -676,7 +716,7 @@ const storeOptions = useMemo(() => stores.map(l => ({
                                                 value={item.quantity_requested}
                                                 onChange={(e) => updateItem(i, 'quantity_requested', e.target.value)}
                                                 placeholder="0"
-                                                className={`bg-muted/30 border-none focus-visible:ring-brand/20 text-center ${item.available_stock !== undefined && isInternal && Number(item.quantity_requested) > item.available_stock
+                                                className={`bg-muted/30 border-none focus-visible:ring-brand/20 text-center h-10 text-base ${item.available_stock !== undefined && isInternal && Number(item.quantity_requested) > item.available_stock
                                                         ? 'text-destructive font-bold ring-1 ring-destructive/50'
                                                         : ''
                                                     }`}
@@ -695,7 +735,7 @@ const storeOptions = useMemo(() => stores.map(l => ({
                                                     value={item.quantity_on_hand}
                                                     onChange={(e) => updateItem(i, 'quantity_on_hand', e.target.value)}
                                                     placeholder="0"
-                                                    className="bg-brand/5 border-dashed border-brand/20 focus-visible:ring-brand/20 text-center font-bold text-brand"
+                                                    className="bg-brand/5 border-dashed border-brand/20 focus-visible:ring-brand/20 text-center font-bold text-brand h-10 text-base"
                                                 />
                                             </div>
                                         ) : (!isInternal && !isDepartmental) && (
@@ -708,7 +748,7 @@ const storeOptions = useMemo(() => stores.map(l => ({
                                                     value={item.estimated_unit_cost}
                                                     onChange={(e) => updateItem(i, 'estimated_unit_cost', e.target.value)}
                                                     placeholder="0.00"
-                                                    className="bg-muted/30 border-none focus-visible:ring-brand/20 text-center"
+                                                    className="bg-muted/30 border-none focus-visible:ring-brand/20 text-center h-10 text-base"
                                                 />
                                             </div>
                                         )}
