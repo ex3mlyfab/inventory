@@ -70,9 +70,12 @@ interface StoreProduct {
     available: number;
 }
 
+interface ProductsByStoreResponse {
+    products: StoreProduct[];
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────────
 
-const SELECT_CLS = 'flex h-10 w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20';
 const CARD_HEADER_CLS = 'px-6 py-4 bg-muted/30 border-b border-border/50 flex items-center gap-2';
 
 // ── Component ─────────────────────────────────────────────────────────────
@@ -129,25 +132,38 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     }, [data.issuing_location_id]);
 
     // ── Fetch products available at issuing store ─────────────────────────
-    const { data: storeProducts, isLoading: isLoadingStoreProducts, isSuccess: isStoreProductsSuccess } = useQuery({
+    const { data: storeProducts, isLoading: isLoadingStoreProducts, isSuccess: isStoreProductsSuccess, isError: isStoreProductsError } = useQuery<ProductsByStoreResponse>({
         queryKey: ['store-products', issuingLocationId],
-        queryFn: () => fetch(`/procurement/requisitions/products-by-store/${issuingLocationId}`).then((res: any) => res.json()),
+        queryFn: async ({ queryKey }) => {
+            const [, locationId] = queryKey;
+            const res = await fetch(`/procurement/requisitions/products-by-store/${locationId}`, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            if (!res.ok) {
+                throw new Error(`Failed to fetch products: ${res.status}`);
+            }
+            return res.json();
+        },
         enabled: isDepartmental && !!issuingLocationId,
         staleTime: 1000 * 60 * 2,
+        retry: 1,
     });
 
     // ── Memoized Options ─────────────────────────────────────────────────
 
     // For departmental: filter by issuing store. For others: show all products.
     const productOptions = useMemo(() => {
-        const baseProducts = isDepartmental && isStoreProductsSuccess && storeProducts
+        const baseProducts = isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length
             ? storeProducts.products
             : products;
 
         return baseProducts.map(p => ({
             label: `${p.name} — ${p.sku}${p.unit_of_measure ? ` (${p.unit_of_measure})` : ''}`,
             value: p.id,
-            // Attach available stock for quick display
             available: (p as StoreProduct).available ?? undefined,
         }));
     }, [products, isDepartmental, isStoreProductsSuccess, storeProducts]);
@@ -158,12 +174,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     })), [stores]);
 
     const departmentOptions = useMemo(() => departments.map(d => ({
-        label: `${d.name} (${d.code})`,
+        label: `${d.name} (${d.code)}`,
         value: d.id
     })), [departments]);
 
     const supplierOptions = useMemo(() => suppliers.map(s => ({
-        label: `${s.name} (${s.code})`,
+        label: `${s.name} (${s.code)}`,
         value: s.id
     })), [suppliers]);
 
@@ -202,7 +218,10 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         try {
             const res = await queryClient.fetchQuery({
                 queryKey: ['check-stock', productId, locationId],
-                queryFn: () => fetch(`/procurement/requisitions/check-stock?${params}`).then((r: any) => r.json()),
+                queryFn: () => fetch(`/procurement/requisitions/check-stock?${params}`, {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    credentials: 'same-origin',
+                }).then((r: any) => r.json()),
                 staleTime: 1000 * 60,
             });
             const available = res?.available ?? res?.data?.available ?? 0;
@@ -234,37 +253,35 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     // ── Auto-populate line items when issuing store changes (Departmental) ──
     useEffect(() => {
         if (isDepartmental && isStoreProductsSuccess && storeProducts?.products?.length) {
-            setData((prev) => {
-                // Build new items from store products with available stock
-                const newItems = storeProducts.products.map((p: StoreProduct) => ({
-                    product_id: p.id,
-                    quantity_requested: '',
-                    quantity_on_hand: '',
-                    estimated_unit_cost: '',
-                    available_stock: p.available,
-                }));
+            const newItems = storeProducts.products.map((p: StoreProduct) => ({
+                product_id: p.id,
+                quantity_requested: '',
+                quantity_on_hand: '',
+                estimated_unit_cost: '',
+                available_stock: p.available,
+            }));
 
-                // If editing, preserve existing selections that match
-                if (isEditing && requisition?.items?.length) {
-                    const existingMap = new Map(requisition.items.map(i => [i.product_id, i]));
-                    return {
-                        ...prev,
-                        items: newItems.map(item => {
-                            const existing = existingMap.get(item.product_id);
-                            return existing ? {
-                                ...item,
-                                quantity_requested: existing.quantity_requested,
-                                quantity_on_hand: existing.quantity_on_hand,
-                                estimated_unit_cost: existing.estimated_unit_cost,
-                            } : item;
-                        })
-                    };
-                }
+            // If editing, preserve existing selections that match
+            let finalItems = newItems;
+            if (isEditing && requisition?.items?.length) {
+                const existingMap = new Map(requisition.items.map(i => [i.product_id, i]));
+                finalItems = newItems.map(item => {
+                    const existing = existingMap.get(item.product_id);
+                    return existing ? {
+                        ...item,
+                        quantity_requested: existing.quantity_requested,
+                        quantity_on_hand: existing.quantity_on_hand,
+                        estimated_unit_cost: existing.estimated_unit_cost,
+                    } : item;
+                });
+            }
 
-                return { ...prev, items: newItems.length > 0 ? newItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }] };
-            });
+            setData('items', finalItems.length > 0 ? finalItems : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+        } else if (isDepartmental && !isLoadingStoreProducts && issuingLocationId && (!storeProducts?.products?.length)) {
+            // Store selected but no products available
+            setData('items', [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
         }
-    }, [isStoreProductsSuccess, storeProducts, isDepartmental, isEditing, requisition]);
+    }, [isStoreProductsSuccess, isLoadingStoreProducts, storeProducts, isDepartmental, issuingLocationId, isEditing, requisition]);
 
     // Handle checkStock for non-departmental location changes
     useEffect(() => {
@@ -534,6 +551,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             <div className="flex items-center gap-2 text-xs text-blue-600">
                                                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                                 Loading products from store…
+                                            </div>
+                                        )}
+                                        {isStoreProductsError && (
+                                            <div className="flex items-center gap-2 text-xs text-destructive">
+                                                <AlertCircle className="h-3.5 w-3.5" />
+                                                Failed to load products. Please try again.
                                             </div>
                                         )}
                                         <InputError message={errors.issuing_location_id} />
