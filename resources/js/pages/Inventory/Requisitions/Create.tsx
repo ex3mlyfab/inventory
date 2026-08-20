@@ -161,25 +161,28 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             ? storeProducts.products
             : products;
 
-        return baseProducts.map(p => ({
-            label: `${p.name} — ${p.sku}${p.unit_of_measure ? ` (${p.unit_of_measure})` : ''}`,
-            value: p.id,
-            available: (p as StoreProduct).available ?? undefined,
-        }));
+        return baseProducts.map(p => {
+            const unit = p.unit_of_measure ? ' (' + p.unit_of_measure + ')' : '';
+            return {
+                label: p.name + ' \u2014 ' + p.sku + unit,
+                value: p.id,
+                available: (p as StoreProduct).available ?? undefined,
+            };
+        });
     }, [products, isDepartmental, isStoreProductsSuccess, storeProducts]);
 
-    const storeOptions = useMemo(() => stores.map(l => ({
-        label: `${l.name} (${l.code})`,
+const storeOptions = useMemo(() => stores.map(l => ({
+        label: l.name + ' (' + l.code + ')',
         value: l.id
     })), [stores]);
 
     const departmentOptions = useMemo(() => departments.map(d => ({
-        label: `${d.name} (${d.code)}`,
+        label: d.name + ' (' + d.code + ')',
         value: d.id
     })), [departments]);
 
     const supplierOptions = useMemo(() => suppliers.map(s => ({
-        label: `${s.name} (${s.code)}`,
+        label: s.name + ' (' + s.code + ')',
         value: s.id
     })), [suppliers]);
 
