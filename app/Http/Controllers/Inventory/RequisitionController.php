@@ -273,15 +273,11 @@ class RequisitionController extends Controller
      * Get products with available stock for a specific issuing store.
      * Returns product details + available quantity for dropdown population.
      */
-    public function productsByStore(Request $request)
+    public function productsByStore($location_id)
     {
         Gate::authorize('requisitions.view');
 
-        $request->validate([
-            'location_id' => ['required', 'ulid', 'exists:storage_locations,id'],
-        ]);
-
-        $stocks = StockBatch::where('storage_location_id', $request->location_id)
+        $stocks = StockBatch::where('storage_location_id', $location_id)
             ->where('status', 'active')
             ->select('product_id', DB::raw('SUM(quantity_on_hand) as available'))
             ->groupBy('product_id')
