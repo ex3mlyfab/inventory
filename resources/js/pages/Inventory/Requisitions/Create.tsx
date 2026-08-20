@@ -83,7 +83,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const isPurchase = type === 'purchase';
 
     const queryClient = useQueryClient();
-    const { data, setData, post, put, processing, errors, transform, watch } = useForm<{
+    const { data, setData, post, put, processing, errors, transform } = useForm<{
         type: RequisitionType;
         reference: string;
         status?: 'draft' | 'submitted';
@@ -122,8 +122,11 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const isEditing = !!requisition;
 
-    // Watch issuing_location_id for reactive query key
-    const issuingLocationId = watch('issuing_location_id');
+    // Sync issuing_location_id to local state for reactive query key
+    const [issuingLocationId, setIssuingLocationId] = useState(data.issuing_location_id);
+    useEffect(() => {
+        setIssuingLocationId(data.issuing_location_id);
+    }, [data.issuing_location_id]);
 
     // ── Fetch products available at issuing store ─────────────────────────
     const { data: storeProducts, isLoading: isLoadingStoreProducts, isSuccess: isStoreProductsSuccess } = useQuery({
