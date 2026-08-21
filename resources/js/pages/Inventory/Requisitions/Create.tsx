@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft, Save, Plus, Trash2, ArrowRightLeft,
     ShoppingCart, AlertCircle, BadgeCheck,
-    Package, ClipboardList, Hash, Building2, Loader2
+    Package, ClipboardList, Hash, Building2, Loader2 
 } from 'lucide-react';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import InputError from '@/components/input-error';
@@ -218,18 +218,34 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         }));
     }, [products, isDepartmental, storeProducts]);
 
-    // Derive line items directly from store products — ensures items are always in sync
-    const derivedItems = useMemo(() => {
-        if (!isDepartmental) return null;
-        if (!storeProducts?.products?.length) return null;
+    // ── LOCAL STATE for line items (departmental) ─────────────────────────
+    // CRITICAL: We use local React state for departmental line items instead of
+    // pushing them through Inertia's useForm setData during render. Inertia's
+    // setData uses cloneDeep + useState which can silently fail to re-render
+    // on mobile WebViews when called from a useEffect triggered by async query
+    // resolution. Local state updates synchronously and reliably on all devices.
+    const [localItems, setLocalItems] = useState<LineItem[]>(
+        isDepartmental
+            ? (requisition?.items?.length
+                ? requisition.items.map(i => ({
+                    product_id: i.product_id,
+                    quantity_requested: i.quantity_requested,
+                    quantity_on_hand: i.quantity_on_hand,
+                    estimated_unit_cost: i.estimated_unit_cost,
+                    available_stock: undefined,
+                }))
+                : [{ product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }])
+            : []
+    );
 
-        const existingMap = new Map(
-            (isEditing && requisition?.items?.length)
-                ? requisition.items.map(i => [i.product_id, i])
-                : []
-        );
+    // When store products arrive, populate local items directly (no Inertia form involved)
+    useEffect(() => {
+        if (!isDepartmental) return;
+        if (!storeProducts?.products?.length) return;
 
-        return storeProducts.products.map((p: StoreProduct) => {
+        const existingMap = new Map(localItems.map(i => [i.product_id, i]));
+
+        const newItems = storeProducts.products.map((p: StoreProduct) => {
             const existing = existingMap.get(p.id);
             return {
                 product_id: p.id,
@@ -239,14 +255,49 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                 available_stock: p.available,
             };
         });
-    }, [isDepartmental, storeProducts, isEditing, requisition]);
 
-    // Sync derived items into form state when they become available
-    useEffect(() => {
-        if (derivedItems !== null) {
-            setData('items', derivedItems);
+        setLocalItems(newItems);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [storeProducts, isDepartmental]);
+
+    // The items to render: local state for departmental, form state for others
+    const displayItems = isDepartmental ? localItems : data.items;
+
+    // Update a line item in the correct state
+    const handleItemChange = (i: number, field: keyof LineItem, value: any) => {
+        if (isDepartmental) {
+            setLocalItems(prev => {
+                const updated = [...prev];
+                updated[i] = { ...updated[i], [field]: value };
+                return updated;
+            });
+        } else {
+            const updated = [...data.items];
+            updated[i] = { ...updated[i], [field]: value };
+            setData('items', updated);
         }
-    }, [derivedItems, setData]);
+
+        const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
+        if (field === 'product_id' && value && locationId) {
+            checkStock(value);
+        }
+    };
+
+    const addLocalItem = () => {
+        if (isDepartmental) {
+            setLocalItems(prev => [...prev, { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+        } else {
+            setData('items', [...data.items, { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
+        }
+    };
+
+    const removeLocalItem = (i: number) => {
+        if (isDepartmental) {
+            setLocalItems(prev => prev.filter((_, idx) => idx !== i));
+        } else {
+            setData('items', data.items.filter((_, idx) => idx !== i));
+        }
+    };
 
     const storeOptions = useMemo(() => stores.map(l => ({
         label: l.name + ' (' + l.code + ')',
@@ -262,26 +313,6 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         label: s.name + ' (' + s.code + ')',
         value: s.id
     })), [suppliers]);
-
-    // ── Actions ───────────────────────────────────────────────────────────
-
-    const addItem = () =>
-        setData('items', [...data.items, { product_id: '', quantity_requested: '', quantity_on_hand: '', estimated_unit_cost: '', available_stock: undefined }]);
-
-    const removeItem = (i: number) =>
-        setData('items', data.items.filter((_, idx) => idx !== i));
-
-    const updateItem = (i: number, field: keyof LineItem, value: any) => {
-        const updated = [...data.items];
-        updated[i] = { ...updated[i], [field]: value };
-        setData('items', updated);
-
-        const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
-
-        if (field === 'product_id' && value && locationId) {
-            checkStock(value);
-        }
-    };
 
     const checkStock = useCallback(async (productId: string, locationOverride?: string) => {
         const locationId = locationOverride || (isPurchase ? data.requesting_location_id : data.issuing_location_id);
@@ -340,16 +371,29 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.issuing_location_id, data.requesting_location_id, isDepartmental, checkStock]);
 
-    const totalEstimated = data.items.reduce(
+    const totalEstimated = displayItems.reduce(
         (sum, row) => sum + (Number(row.quantity_requested) * Number(row.estimated_unit_cost || 0)),
         0
     );
+
+    // Sync localItems into form state right before submit (for departmental only)
+    const syncLocalItemsToForm = () => {
+        if (isDepartmental) {
+            const filtered = localItems.filter(item =>
+                item.product_id &&
+                item.quantity_requested &&
+                Number(item.quantity_requested) > 0
+            );
+            setData('items', filtered);
+        }
+    };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
         setData('status', 'submitted');
 
         if (isDepartmental) {
+            syncLocalItemsToForm();
             transform((currentData) => ({
                 ...currentData,
                 items: currentData.items.filter(item =>
@@ -372,6 +416,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         setData('status', 'draft');
 
         if (isDepartmental) {
+            syncLocalItemsToForm();
             transform((currentData) => ({
                 ...currentData,
                 items: currentData.items.filter(item =>
@@ -645,13 +690,13 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 <div className="col-span-1" />
                             </div>
 
-                            {data.items.map((item, i) => (
+                            {displayItems.map((item, i) => (
                                 <div key={i} className="flex flex-col md:grid md:grid-cols-12 gap-4 md:gap-3 items-start p-4 md:p-0 rounded-xl border border-border/50 md:border-none bg-muted/10 md:bg-transparent relative">
                                     {/* Mobile Remove Button */}
-                                    {data.items.length > 1 && (
+                                    {displayItems.length > 1 && (
                                         <button
                                             type="button"
-                                            onClick={() => removeItem(i)}
+                                            onClick={() => removeLocalItem(i)}
                                             className="absolute top-2 right-2 h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 flex md:hidden items-center justify-center transition-colors z-10"
                                         >
                                             <Trash2 className="h-4 w-4" />
@@ -671,7 +716,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             <Combobox
                                                 options={productOptions}
                                                 value={item.product_id}
-                                                onChange={(val) => updateItem(i, 'product_id', val)}
+                                                onChange={(val) => handleItemChange(i, 'product_id', val)}
                                                 placeholder="Select product…"
                                                 className="bg-muted/30 border-none"
                                             />
@@ -679,7 +724,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                         <div className="md:hidden">
                                             <select
                                                 value={item.product_id}
-                                                onChange={(e) => updateItem(i, 'product_id', e.target.value)}
+                                                onChange={(e) => handleItemChange(i, 'product_id', e.target.value)}
                                                 className={cn(SELECT_INPUT_CLS, 'min-h-[44px] text-base appearance-none')}
                                                 style={{ fontSize: '16px' }}
                                             >
@@ -756,10 +801,10 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                     </div>
 
                                     <div className="hidden md:flex md:col-span-1 justify-end pt-1">
-                                        {data.items.length > 1 && (
+                                        {displayItems.length > 1 && (
                                             <button
                                                 type="button"
-                                                onClick={() => removeItem(i)}
+                                                onClick={() => removeLocalItem(i)}
                                                 className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10 flex items-center justify-center transition-colors"
                                             >
                                                 <Trash2 className="h-3.5 w-3.5" />
@@ -773,7 +818,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={addItem}
+                                onClick={addLocalItem}
                                 className="mt-4 border-2 border-dashed border-brand/20 text-brand hover:bg-brand/5 h-11 rounded-xl font-bold text-[11px] uppercase tracking-wider w-full md:w-auto"
                             >
                                 <Plus className="h-4 w-4 mr-2" />
@@ -799,22 +844,22 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                     }).format(totalEstimated)}
                                 </p>
                                 <p className="text-xs text-text-muted mt-1">
-                                    {data.items.length} line item{data.items.length > 1 ? 's' : ''}
+                                    {displayItems.length} line item{displayItems.length > 1 ? 's' : ''}
                                 </p>
                             </CardContent>
                         </Card>
                     )}
 
                     {/* Item count (internal/departmental) */}
-                    {(isInternal || isDepartmental) && data.items.filter((i) => i.product_id).length > 0 && (
+                    {(isInternal || isDepartmental) && displayItems.filter((i) => i.product_id).length > 0 && (
                         <Card className="border-brand/20 bg-brand/5 border-dashed">
                             <CardContent className="p-5">
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-brand">Items Requested</p>
                                 <p className="text-3xl font-extrabold text-brand mt-1">
-                                    {data.items.filter((i) => i.product_id).length}
+                                    {displayItems.filter((i) => i.product_id).length}
                                 </p>
                                 <p className="text-xs text-text-muted mt-1">
-                                    Total qty: {data.items.reduce((s, i) => s + Number(i.quantity_requested || 0), 0)} units
+                                    Total qty: {displayItems.reduce((s, i) => s + Number(i.quantity_requested || 0), 0)} units
                                 </p>
                             </CardContent>
                         </Card>
