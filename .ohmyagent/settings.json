@@ -1,0 +1,16 @@
+{
+  "permission_rules": [
+    {
+      "tool": "Cmd(cd *)",
+      "decision": "allow"
+    },
+    {
+      "tool": "Grep",
+      "decision": "allow"
+    },
+    {
+      "tool": "Read",
+      "decision": "allow"
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     ArrowLeft, Save, Plus, Trash2, ArrowRightLeft,
     ShoppingCart, AlertCircle, BadgeCheck,
-    Package, ClipboardList, Hash, Building2, Loader2 
+    Package, ClipboardList, Hash, Building2, Loader2, ChevronDown
 } from 'lucide-react';
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import InputError from '@/components/input-error';
@@ -92,7 +92,7 @@ function MobileSelect({
     error,
     className,
 }: {
-    label: string;
+    label?: string;
     value: string;
     onChange: (v: string) => void;
     options: { label: string; value: string }[];
@@ -103,9 +103,11 @@ function MobileSelect({
 }) {
     return (
         <div className={className}>
-            <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
-                {label}
-            </Label>
+            {label && (
+                <Label className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-1.5 block">
+                    {label}
+                </Label>
+            )}
             <select
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -123,6 +125,112 @@ function MobileSelect({
                 ))}
             </select>
             {error && <p className="text-xs text-destructive mt-1">{error}</p>}
+        </div>
+    );
+}
+
+// ── Mobile Product Picker ────────────────────────────────────────────────
+// A touch-friendly mobile dropdown that replaces the native <select> which
+// has been unreliable on some Android WebViews when the option list is long.
+// It uses a simple state-driven panel that opens/closes on tap, with each
+// option rendered as a full-height touch target.
+function MobileProductPicker({
+    options,
+    value,
+    onChange,
+    isLoading,
+}: {
+    options: { label: string; value: string; available?: number }[];
+    value: string;
+    onChange: (v: string) => void;
+    isLoading?: boolean;
+}) {
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+
+    // Close when tapping outside
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+                setOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const selected = options.find(o => o.value === value);
+
+    return (
+        <div ref={containerRef} className="relative">
+            <button
+                type="button"
+                onClick={() => setOpen(!open)}
+                disabled={isLoading}
+                className={cn(
+                    SELECT_INPUT_CLS,
+                    'flex items-center justify-between min-h-[44px] pr-10',
+                    isLoading && 'opacity-50 cursor-not-allowed'
+                )}
+                style={{ fontSize: '16px' }}
+                aria-expanded={open}
+                aria-haspopup="listbox"
+            >
+                <span className={cn(
+                    'truncate text-sm',
+                    !selected && 'text-text-muted'
+                )}>
+                    {selected?.label ?? 'Select product…'}
+                </span>
+                <ChevronDown className={cn(
+                    'h-4 w-4 shrink-0 opacity-50 transition-transform duration-200',
+                    open && 'rotate-180'
+                )} />
+            </button>
+
+            {open && (
+                <div
+                    className="absolute z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border/50 bg-popover shadow-lg"
+                    role="listbox"
+                    aria-label="Product list"
+                >
+                    {isLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-xs text-text-muted">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Loading…
+                        </div>
+                    ) : options.length === 0 ? (
+                        <div className="py-8 text-center text-xs text-text-muted">
+                            No products available at this store.
+                        </div>
+                    ) : (
+                        options.map((opt) => (
+                            <button
+                                key={opt.value}
+                                type="button"
+                                role="option"
+                                aria-selected={value === opt.value}
+                                onClick={() => { onChange(opt.value); setOpen(false); }}
+                                className={cn(
+                                    'flex w-full items-center gap-2 px-4 py-3 text-left text-sm hover:bg-accent transition-colors',
+                                    value === opt.value && 'bg-accent font-semibold'
+                                )}
+                                style={{ minHeight: '44px' }}
+                            >
+                                {value === opt.value && (
+                                    <span className="text-brand">✓</span>
+                                )}
+                                <span className="truncate">{opt.label}</span>
+                                {opt.available !== undefined && opt.available > 0 && (
+                                    <span className="ml-auto text-[10px] text-text-muted shrink-0">
+                                        {opt.available} avail
+                                    </span>
+                                )}
+                            </button>
+                        ))
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -174,11 +282,19 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const isEditing = !!requisition;
 
-    // Sync issuing_location_id to local state for reactive query key
+    // The issuing store is the single source of truth for the store-products query.
+    // It lives in plain React state (not Inertia form data) because setData() can be
+    // unreliable on mobile WebViews — the query and item population must never depend
+    // on an Inertia state round-trip. The form field is still written for the payload.
     const [issuingLocationId, setIssuingLocationId] = useState(data.issuing_location_id);
-    useEffect(() => {
-        setIssuingLocationId(data.issuing_location_id);
-    }, [data.issuing_location_id]);
+
+    const onIssuingStoreChange = (val: string) => {
+        setIssuingLocationId(val);
+        setData('issuing_location_id', val);
+    };
+
+    // Client-side guard for the finalize actions (server also enforces min:1)
+    const [formError, setFormError] = useState<string | null>(null);
 
     // ── Fetch products available at issuing store ─────────────────────────
     const { data: storeProducts, isLoading: isLoadingStoreProducts, isError: isStoreProductsError } = useQuery<ProductsByStoreResponse>({
@@ -207,14 +323,21 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     // Derive product options directly from query data — no success flag needed
     const productOptions = useMemo(() => {
-        const baseProducts = isDepartmental && storeProducts?.products?.length
-            ? storeProducts.products
-            : products;
+        if (isDepartmental) {
+            // Departmental line items must come from the selected issuing store's stock.
+            // Before a store is selected (or if it has no stock) there is nothing to choose from,
+            // so we never fall back to the full product catalog here.
+            return (storeProducts?.products ?? []).map(p => ({
+                label: p.name + ' \u2014 ' + p.sku + (p.unit_of_measure ? ' (' + p.unit_of_measure + ')' : ''),
+                value: p.id,
+                available: p.available,
+            }));
+        }
 
-        return baseProducts.map(p => ({
+        return products.map(p => ({
             label: p.name + ' \u2014 ' + p.sku + (p.unit_of_measure ? ' (' + p.unit_of_measure + ')' : ''),
             value: p.id,
-            available: (p as StoreProduct).available ?? undefined,
+            available: undefined,
         }));
     }, [products, isDepartmental, storeProducts]);
 
@@ -238,26 +361,41 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             : []
     );
 
-    // When store products arrive, populate local items directly (no Inertia form involved)
+    // When store products arrive, populate local items directly (no Inertia form involved).
+    // Uses the functional updater so it never reads a stale closure, preserves typed
+    // quantities for products that are still in the store, keeps manually-added rows,
+    // and skips a rebuild when the product set is unchanged so typing is never disturbed.
     useEffect(() => {
-        if (!isDepartmental) return;
-        if (!storeProducts?.products?.length) return;
+        if (!isDepartmental) {
+            return;
+        }
 
-        const existingMap = new Map(localItems.map(i => [i.product_id, i]));
+        if (!storeProducts?.products?.length) {
+            return;
+        }
 
-        const newItems = storeProducts.products.map((p: StoreProduct) => {
-            const existing = existingMap.get(p.id);
-            return {
-                product_id: p.id,
-                quantity_requested: existing?.quantity_requested ?? '',
-                quantity_on_hand: existing?.quantity_on_hand ?? '',
-                estimated_unit_cost: existing?.estimated_unit_cost ?? '',
-                available_stock: p.available,
-            };
+        setLocalItems(prev => {
+            const existingMap = new Map(prev.map(i => [i.product_id, i]));
+
+            const rows = storeProducts.products.map((p: StoreProduct) => {
+                const existing = existingMap.get(p.id);
+                return {
+                    product_id: p.id,
+                    quantity_requested: existing?.quantity_requested ?? '',
+                    quantity_on_hand: existing?.quantity_on_hand ?? '',
+                    estimated_unit_cost: existing?.estimated_unit_cost ?? '',
+                    available_stock: p.available,
+                };
+            });
+
+            const prevIds = prev.map(i => i.product_id).sort().join('|');
+            const nextIds = rows.map(i => i.product_id).sort().join('|');
+            if (prevIds === nextIds) {
+                return prev;
+            }
+
+            return [...rows, ...prev.filter(i => !i.product_id)];
         });
-
-        setLocalItems(newItems);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [storeProducts, isDepartmental]);
 
     // The items to render: local state for departmental, form state for others
@@ -278,7 +416,9 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         }
 
         const locationId = isPurchase ? data.requesting_location_id : data.issuing_location_id;
-        if (field === 'product_id' && value && locationId) {
+        // checkStock writes to the Inertia form's data.items — for departmental, items live in
+        // localItems and available stock already comes from the store-products payload, so skip it.
+        if (field === 'product_id' && value && locationId && !isDepartmental) {
             checkStock(value);
         }
     };
@@ -376,33 +516,32 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
         0
     );
 
-    // Sync localItems into form state right before submit (for departmental only)
-    const syncLocalItemsToForm = () => {
-        if (isDepartmental) {
-            const filtered = localItems.filter(item =>
-                item.product_id &&
-                item.quantity_requested &&
-                Number(item.quantity_requested) > 0
-            );
-            setData('items', filtered);
-        }
+    // Build the exact items payload from the state the user sees. This must run inside
+    // transform() — Inertia's post/put reads form data synchronously (dataRef.current), so
+    // setData() calls made just before submit are NOT flushed into the payload.
+    const buildItems = () => {
+        const source = isDepartmental ? localItems : data.items;
+        return source
+            .filter(item => item.product_id && Number(item.quantity_requested) > 0)
+            .map(item => ({
+                product_id: item.product_id,
+                quantity_requested: String(Math.max(1, Number(item.quantity_requested) | 0)),
+                quantity_on_hand: item.quantity_on_hand,
+                estimated_unit_cost: item.estimated_unit_cost,
+            }));
     };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        setData('status', 'submitted');
+        setFormError(null);
 
-        if (isDepartmental) {
-            syncLocalItemsToForm();
-            transform((currentData) => ({
-                ...currentData,
-                items: currentData.items.filter(item =>
-                    item.product_id &&
-                    item.quantity_requested &&
-                    Number(item.quantity_requested) > 0
-                )
-            }));
+        const items = buildItems();
+        if (!items.length) {
+            setFormError('Add at least one item with a quantity before submitting.');
+            return;
         }
+
+        transform((currentData) => ({ ...currentData, status: 'submitted', items }));
 
         if (isEditing && requisition) {
             put(`/procurement/requisitions/${requisition.id}`);
@@ -413,19 +552,15 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
 
     const saveDraft = (e: React.FormEvent) => {
         e.preventDefault();
-        setData('status', 'draft');
+        setFormError(null);
 
-        if (isDepartmental) {
-            syncLocalItemsToForm();
-            transform((currentData) => ({
-                ...currentData,
-                items: currentData.items.filter(item =>
-                    item.product_id &&
-                    item.quantity_requested &&
-                    Number(item.quantity_requested) > 0
-                )
-            }));
+        const items = buildItems();
+        if (!items.length) {
+            setFormError('Add at least one item with a quantity before saving.');
+            return;
         }
+
+        transform((currentData) => ({ ...currentData, status: 'draft', items }));
 
         if (isEditing && requisition) {
             put(`/procurement/requisitions/${requisition.id}`);
@@ -619,10 +754,9 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                         </Label>
                                         <MobileSelect
                                             value={data.issuing_location_id}
-                                            onChange={(val) => setData('issuing_location_id', val)}
+                                            onChange={onIssuingStoreChange}
                                             options={storeOptions.filter(o => o.value !== data.requesting_location_id)}
                                             placeholder="Select issuing store…"
-                                            disabled={isLoadingStoreProducts}
                                             error={errors.issuing_location_id}
                                         />
                                         {isLoadingStoreProducts && (
@@ -635,6 +769,13 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             <div className="flex items-center gap-2 text-xs text-destructive mt-1">
                                                 <AlertCircle className="h-3.5 w-3.5" />
                                                 Failed to load products.
+                                                <button
+                                                    type="button"
+                                                    onClick={() => queryClient.invalidateQueries({ queryKey: ['store-products'] })}
+                                                    className="underline font-bold hover:opacity-80"
+                                                >
+                                                    Retry
+                                                </button>
                                             </div>
                                         )}
                                     </div>
@@ -676,6 +817,20 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                             )}
                         </div>
                         <CardContent className="p-6 space-y-4">
+                            {/* Departmental guidance / empty states */}
+                            {isDepartmental && !issuingLocationId && (
+                                <div className="flex items-center gap-2 text-xs text-blue-700 rounded-xl bg-blue-50 border border-blue-100 px-4 py-3">
+                                    <Building2 className="h-4 w-4 shrink-0" />
+                                    Select an issuing store above to load the products available in that store.
+                                </div>
+                            )}
+                            {isDepartmental && issuingLocationId && !isLoadingStoreProducts && !storeProducts?.products?.length && !isStoreProductsError && (
+                                <div className="flex items-center gap-2 text-xs text-amber-700 rounded-xl bg-amber-50 border border-amber-100 px-4 py-3">
+                                    <AlertCircle className="h-4 w-4 shrink-0" />
+                                    No stock available at the selected store.
+                                </div>
+                            )}
+
                             {/* Column headers - Desktop only */}
                             <div className="hidden md:grid grid-cols-12 gap-3 text-[10px] font-bold uppercase tracking-widest text-text-muted px-1">
                                 <div className={cn(
@@ -722,17 +877,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             />
                                         </div>
                                         <div className="md:hidden">
-                                            <select
+                                            <MobileProductPicker
+                                                options={productOptions}
                                                 value={item.product_id}
-                                                onChange={(e) => handleItemChange(i, 'product_id', e.target.value)}
-                                                className={cn(SELECT_INPUT_CLS, 'min-h-[44px] text-base appearance-none')}
-                                                style={{ fontSize: '16px' }}
-                                            >
-                                                <option value="">Select product…</option>
-                                                {productOptions.map(opt => (
-                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                ))}
-                                            </select>
+                                                onChange={(val) => handleItemChange(i, 'product_id', val)}
+                                                isLoading={isLoadingStoreProducts}
+                                            />
                                         </div>
                                         {(errors as any)[`items.${i}.product_id`] && (
                                             <p className="text-xs text-destructive mt-1">{(errors as any)[`items.${i}.product_id`]}</p>
@@ -760,7 +910,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                                 type="number"
                                                 min="1"
                                                 value={item.quantity_requested}
-                                                onChange={(e) => updateItem(i, 'quantity_requested', e.target.value)}
+                                                onChange={(e) => handleItemChange(i, 'quantity_requested', e.target.value)}
                                                 placeholder="0"
                                                 className={`bg-muted/30 border-none focus-visible:ring-brand/20 text-center h-10 text-base ${item.available_stock !== undefined && isInternal && Number(item.quantity_requested) > item.available_stock
                                                         ? 'text-destructive font-bold ring-1 ring-destructive/50'
@@ -779,7 +929,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                                     type="number"
                                                     min="0"
                                                     value={item.quantity_on_hand}
-                                                    onChange={(e) => updateItem(i, 'quantity_on_hand', e.target.value)}
+                                                    onChange={(e) => handleItemChange(i, 'quantity_on_hand', e.target.value)}
                                                     placeholder="0"
                                                     className="bg-brand/5 border-dashed border-brand/20 focus-visible:ring-brand/20 text-center font-bold text-brand h-10 text-base"
                                                 />
@@ -792,7 +942,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                                     min="0"
                                                     step="0.01"
                                                     value={item.estimated_unit_cost}
-                                                    onChange={(e) => updateItem(i, 'estimated_unit_cost', e.target.value)}
+                                                    onChange={(e) => handleItemChange(i, 'estimated_unit_cost', e.target.value)}
                                                     placeholder="0.00"
                                                     className="bg-muted/30 border-none focus-visible:ring-brand/20 text-center h-10 text-base"
                                                 />
@@ -892,6 +1042,12 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                     className="flex min-h-[60px] w-full rounded-md border-none bg-muted/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand/20"
                                 />
                             </div>
+                            {formError && (
+                                <div className="flex items-center gap-2 text-xs text-destructive rounded-xl bg-destructive/5 border border-destructive/20 px-4 py-3">
+                                    <AlertCircle className="h-4 w-4 shrink-0" />
+                                    {formError}
+                                </div>
+                            )}
                             <div className="flex flex-col gap-3 pt-2">
                                 <Button
                                     className="w-full bg-brand hover:bg-brand-dark text-brand-foreground shadow-lg shadow-brand/20 h-12 rounded-xl font-black uppercase tracking-widest text-[10px]"
