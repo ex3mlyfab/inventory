@@ -541,7 +541,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             return;
         }
 
-        transform((currentData) => ({ ...currentData, status: 'submitted', items }));
+        transform((currentData) => ({ ...currentData, status: 'submitted', issuing_location_id: issuingLocationId, items }));
 
         if (isEditing && requisition) {
             put(`/procurement/requisitions/${requisition.id}`);
@@ -560,7 +560,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             return;
         }
 
-        transform((currentData) => ({ ...currentData, status: 'draft', items }));
+        transform((currentData) => ({ ...currentData, status: 'draft', issuing_location_id: issuingLocationId, items }));
 
         if (isEditing && requisition) {
             put(`/procurement/requisitions/${requisition.id}`);
@@ -753,7 +753,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                                             <span className="ml-2 text-[10px] normal-case font-normal italic text-text-muted">(source of stock)</span>
                                         </Label>
                                         <MobileSelect
-                                            value={data.issuing_location_id}
+                                            value={issuingLocationId}
                                             onChange={onIssuingStoreChange}
                                             options={storeOptions.filter(o => o.value !== data.requesting_location_id)}
                                             placeholder="Select issuing store…"
