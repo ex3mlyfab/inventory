@@ -1,10 +1,11 @@
-import { Head, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import AppLayout from '@/layouts/app-layout';
 import { PageHeader } from '@/components/shared/page-header';
 import { StatCard } from '@/components/shared/stat-card';
 import { StatusBadge } from '@/components/shared/status-badge';
 import { Can } from '@/components/can';
 import { dashboard } from '@/routes';
+import { index as requisitions } from '@/routes/procurement/requisitions';
 import {
     AlertTriangle,
     ArrowDownRight,
@@ -88,6 +89,33 @@ export default function Dashboard({
                         <StatusBadge variant="success">{roleName}</StatusBadge>
                     }
                 />
+
+                {/* Requisitions CTA Banner */}
+                <Can permission="requisitions.view">
+                    <Link
+                        href={requisitions().url}
+                        className="flex items-center justify-between gap-4 rounded-xl border border-brand/20 bg-brand/5 px-5 py-4 transition-colors hover:bg-brand/10 no-underline"
+                    >
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand/15 text-brand">
+                                <ClipboardList className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-semibold text-[#181d1a]">
+                                    Requisitions
+                                </p>
+                                <p className="text-xs text-[#6D7175] truncate">
+                                    {stats.pendingRequisitionsCount > 0
+                                        ? `${stats.pendingRequisitionsCount} pending${stats.pendingRequisitionsCount > 1 ? ' requisitions' : ' requisition'}`
+                                        : 'No pending requisitions'}
+                                </p>
+                            </div>
+                        </div>
+                        <span className="shrink-0 text-sm font-medium text-brand hover:underline">
+                            Manage Requisitions &rarr;
+                        </span>
+                    </Link>
+                </Can>
 
                 {/* Department Holdings Section */}
                 {departmentHoldings && (
