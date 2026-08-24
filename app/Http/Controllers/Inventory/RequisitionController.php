@@ -280,7 +280,7 @@ class RequisitionController extends Controller
         // Disable the location-access global scope: departmental users are scoped to
         // their own store/department, which would otherwise make this query always
         // return empty when selecting a different issuing store.
-        $stocks = StockBatch::withoutGlobalScope(\App\Models\Traits\HasLocationScope::class)
+        $stocks = StockBatch::withoutGlobalScope('location_access')
             ->where('storage_location_id', $location_id)
             ->where('status', 'active')
             ->select('product_id', DB::raw('SUM(quantity_on_hand) as available'))
