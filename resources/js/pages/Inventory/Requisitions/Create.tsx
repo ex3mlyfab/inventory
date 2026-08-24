@@ -289,8 +289,21 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
     const [issuingLocationId, setIssuingLocationId] = useState(data.issuing_location_id);
 
     const onIssuingStoreChange = (val: string) => {
-        setIssuingLocationId(val);
-        setData('issuing_location_id', val);
+        const nextLocationId = String(val || '');
+
+        setIssuingLocationId(nextLocationId);
+        setData('issuing_location_id', nextLocationId);
+
+        // Remove rows from the previous store immediately. The query result is
+        // asynchronous, so retaining them makes mobile look as though the new
+        // selection was ignored while products are loading.
+        setLocalItems([{
+            product_id: '',
+            quantity_requested: '',
+            quantity_on_hand: '',
+            estimated_unit_cost: '',
+            available_stock: undefined,
+        }]);
     };
 
     // Client-side guard for the finalize actions (server also enforces min:1)
@@ -370,7 +383,7 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
             return;
         }
 
-        if (!storeProducts?.products?.length) {
+        if (!storeProducts) {
             return;
         }
 
@@ -387,6 +400,16 @@ export default function RequisitionCreate({ type, stores, departmentalStores, pr
                     available_stock: p.available,
                 };
             });
+
+            if (!rows.length) {
+                return [{
+                    product_id: '',
+                    quantity_requested: '',
+                    quantity_on_hand: '',
+                    estimated_unit_cost: '',
+                    available_stock: undefined,
+                }];
+            }
 
             const prevIds = prev.map(i => i.product_id).sort().join('|');
             const nextIds = rows.map(i => i.product_id).sort().join('|');
