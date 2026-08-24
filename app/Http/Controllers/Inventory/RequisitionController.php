@@ -62,9 +62,9 @@ class RequisitionController extends Controller
 
         $query = Requisition::with([
             'requester.department',
-            'requestingLocation.department',
+            'requestingLocation' => fn ($query) => $query->withoutGlobalScope('location_access')->with('department'),
             'requestingDepartment',
-            'issuingLocation',
+            'issuingLocation' => fn ($query) => $query->withoutGlobalScope('location_access'),
             'supplier',
             'level1Approver',
             'level2Approver',

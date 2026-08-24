@@ -169,6 +169,7 @@ export type RequisitionStatus =
     | 'partially_issued'
     | 'issued'
     | 'in_transit'
+    | 'partially_received'
     | 'completed'
     | 'rejected'
     | 'cancelled';
@@ -182,6 +183,8 @@ export interface RequisitionItem {
     quantity_used: number;
     quantity_approved: number;
     quantity_issued: number;
+    quantity_in_transit: number;
+    quantity_received: number;
     estimated_unit_cost: number | null;
     notes: string | null;
     product?: Product;

@@ -140,6 +140,13 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
     const handleReceive = () => {
         setActionProcessing(true);
         router.post(`/procurement/requisitions/${requisition.id}/receive`, {
+            lines: requisition.items
+                .filter((item) => item.quantity_in_transit > 0)
+                .map((item) => ({
+                    item_id: item.id,
+                    quantity_received: item.quantity_in_transit,
+                    quantity_short: 0,
+                })),
             updated_at: requisition.updated_at,
         }, {
             onFinish: () => {
@@ -246,7 +253,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                 'Medical Director',
                             ].includes(r));
                             
-                            const canReceive = !isPurchase && (requisition.status === 'issued' || requisition.status === 'in_transit') && 
+                            const canReceive = !isPurchase && ['issued', 'in_transit', 'partially_issued', 'partially_received'].includes(requisition.status) && 
                                               (isRequester || isDeptHead || isSuperAdmin || isManager);
 
                             if (!canReceive) return null;
