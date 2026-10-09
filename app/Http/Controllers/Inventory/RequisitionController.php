@@ -509,12 +509,51 @@ class RequisitionController extends Controller
         $canReject = ($requisition->awaitingLevel1() && $canApproveL1)
                   || ($requisition->awaitingLevel2() && $canApproveL2);
 
+        $previousReleaseHistory = [];
+        $requestingDepartmentId = $requisition->requestingLocation?->department_id;
+
+        if ($canApproveL2 && $requisition->isInternal() && $requestingDepartmentId && $requisition->issuing_location_id) {
+            $previousReleaseHistory = DB::table('stock_movements')
+                ->join('requisition_items', 'requisition_items.id', '=', 'stock_movements.requisition_item_id')
+                ->join('requisitions', 'requisitions.id', '=', 'requisition_items.requisition_id')
+                ->join('storage_locations as request_locations', 'request_locations.id', '=', 'requisitions.requesting_location_id')
+                ->where('stock_movements.reference_type', Requisition::class)
+                ->where('stock_movements.type', 'requisition_fulfillment')
+                ->where('stock_movements.quantity', '<', 0)
+                ->where('requisitions.type', 'internal')
+                ->where('requisitions.id', '!=', $requisition->id)
+                ->where('requisitions.issuing_location_id', $requisition->issuing_location_id)
+                ->where('request_locations.department_id', $requestingDepartmentId)
+                ->whereNotNull('requisitions.level2_approved_at')
+                ->where('requisitions.created_at', '<', $requisition->created_at)
+                ->where('stock_movements.created_at', '<', $requisition->created_at)
+                ->select([
+                    'requisition_items.product_id',
+                    'requisitions.reference',
+                    'requisitions.created_at as request_created_at',
+                    DB::raw('SUM(-stock_movements.quantity) as released_quantity'),
+                    DB::raw('MAX(stock_movements.created_at) as released_at'),
+                ])
+                ->groupBy('requisition_items.product_id', 'requisitions.id', 'requisitions.reference', 'requisitions.created_at')
+                ->orderByRaw('MAX(stock_movements.created_at) DESC')
+                ->get()
+                ->groupBy('product_id')
+                ->map(fn ($releases) => [
+                    'released_quantity' => (int) $releases->first()->released_quantity,
+                    'requisition_reference' => $releases->first()->reference,
+                    'request_created_at' => $releases->first()->request_created_at,
+                    'released_at' => $releases->first()->released_at,
+                ])
+                ->all();
+        }
+
         return Inertia::render('Inventory/Requisitions/Show', [
             'requisition' => $requisition,
             'canApproveL1' => $canApproveL1,
             'canApproveL2' => $canApproveL2,
             'canReject' => $canReject,
             'canUpload' => $requisition->status === 'approved' && $requisition->requested_by === $user->id,
+            'previousReleaseHistory' => $previousReleaseHistory,
         ]);
     }
 

@@ -21,7 +21,7 @@ import {
     XCircle, Package, Building2, CalendarDays, User2,
     ClipboardList, Hash, AlertCircle, Clock,
     Printer, Upload, FileText, Download, Plus, TrendingUp,
-    FileSpreadsheet, MapPin, BadgeCheck
+    FileSpreadsheet, MapPin, BadgeCheck, History
 } from 'lucide-react';
 import { IssueItemsDialog } from './Partials/IssueItemsDialog';
 import { ConfirmationDialog } from '@/components/shared/confirmation-dialog';
@@ -53,9 +53,15 @@ interface Props {
     canApproveL2: boolean;
     canReject: boolean;
     canUpload?: boolean;
+    previousReleaseHistory: Record<string, {
+        released_quantity: number;
+        requisition_reference: string;
+        request_created_at: string;
+        released_at: string;
+    }>;
 }
 
-export default function RequisitionShow({ requisition, canApproveL1, canApproveL2, canReject, canUpload }: Props) {
+export default function RequisitionShow({ requisition, canApproveL1, canApproveL2, canReject, canUpload, previousReleaseHistory }: Props) {
     const { auth } = usePage<{ auth: Auth }>().props;
     const isInternal     = requisition.type === 'internal';
     const isDepartmental = requisition.type === 'departmental';
@@ -68,6 +74,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
     const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
     const [isReceiveDialogOpen, setIsReceiveDialogOpen] = useState(false);
     const [isUploadFormOpen, setIsUploadFormOpen] = useState(false);
+    const [historyItem, setHistoryItem] = useState<RequisitionItem | null>(null);
     const [actionProcessing, setActionProcessing] = useState(false);
 
     const currentLevel = canApproveL1 ? 1 : canApproveL2 ? 2 : 0;
@@ -362,6 +369,17 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                                             <div className="min-w-0">
                                                                 <p className="text-sm font-bold text-text-primary truncate">{item.product?.name}</p>
                                                                 <p className="text-[10px] text-text-muted font-mono uppercase tracking-tight">{item.product?.sku}</p>
+                                                                {canApproveL2 && isInternal && (
+                                                                    <Button
+                                                                        type="button"
+                                                                        variant="link"
+                                                                        className="h-auto p-0 text-xs text-brand"
+                                                                        onClick={() => setHistoryItem(item)}
+                                                                    >
+                                                                        <History className="mr-1 h-3 w-3" />
+                                                                        Previous release
+                                                                    </Button>
+                                                                )}
                                                             </div>
                                                         </div>
                                                         <div className="grid grid-cols-1 sm:flex sm:items-center gap-4 w-full">
@@ -1074,6 +1092,38 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                             </Button>
                         </DialogFooter>
                     </form>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={historyItem !== null} onOpenChange={(open) => !open && setHistoryItem(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Previous Release Quantity</DialogTitle>
+                        <DialogDescription>
+                            {historyItem?.product?.name} released from {requisition.issuing_location?.name ?? 'the issuing store'}
+                            {' '}for {requisition.requesting_location?.department?.name ?? 'this department'}.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {historyItem && previousReleaseHistory[historyItem.product_id] ? (
+                        <div className="space-y-2 rounded-md border p-4">
+                            <p className="text-2xl font-bold text-text-primary">
+                                {previousReleaseHistory[historyItem.product_id].released_quantity}{' '}
+                                <span className="text-sm font-medium text-text-muted">
+                                    {historyItem.product?.unit_of_measure?.abbreviation}
+                                </span>
+                            </p>
+                            <p className="text-sm text-text-secondary">
+                                Requisition {previousReleaseHistory[historyItem.product_id].requisition_reference}
+                            </p>
+                            <p className="text-xs text-text-muted">
+                                Released {new Date(previousReleaseHistory[historyItem.product_id].released_at).toLocaleDateString('en-NG', { dateStyle: 'medium' })}
+                            </p>
+                        </div>
+                    ) : (
+                        <p className="rounded-md border border-dashed p-4 text-sm text-text-muted">
+                            No previous approved request for this item in this department and issuing store.
+                        </p>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>
