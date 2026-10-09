@@ -294,7 +294,7 @@ export default function DepartmentsIndex({ departments, allDepartments, users, f
 
             {/* Create/Edit Modern Dialog */}
             <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="max-w-lg overflow-hidden rounded-2xl p-0 shadow-2xl transition-all">
+                <DialogContent className="flex max-h-[90vh] max-w-lg flex-col overflow-hidden rounded-2xl p-0 shadow-2xl transition-all">
                     <div className="bg-[#008060] p-6 text-white">
                         <DialogTitle className="text-xl font-bold">
                             {editingDept ? 'Update Department' : 'Establish New Department'}
@@ -304,7 +304,7 @@ export default function DepartmentsIndex({ departments, allDepartments, users, f
                         </DialogDescription>
                     </div>
                     
-                    <form onSubmit={handleSubmit} className="space-y-6 p-6">
+                    <form onSubmit={handleSubmit} className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6">
                         <div className="grid grid-cols-2 gap-6">
                             <div className="col-span-2 space-y-2">
                                 <Label className="text-xs font-bold uppercase tracking-wider text-[#6D7175]">Department Name</Label>

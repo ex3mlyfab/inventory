@@ -27,11 +27,12 @@ class ReceiveRequisitionAction
                 ]);
             }
 
-            $targetLocationId = $requisition->requestingDepartment
-                ->storageLocations()
-                ->where('is_active', true)
-                ->orderBy('created_at')
-                ->value('id');
+            $targetLocationId = $requisition->isInternal()
+                ? $requisition->requesting_location_id
+                : $requisition->requestingDepartment?->storageLocations()
+                    ->where('is_active', true)
+                    ->orderBy('created_at')
+                    ->value('id');
 
             if (! $targetLocationId) {
                 throw ValidationException::withMessages([

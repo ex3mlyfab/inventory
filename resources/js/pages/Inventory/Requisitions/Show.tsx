@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Head, Link, useForm, router, usePage } from '@inertiajs/react';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/shared/page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -149,9 +150,17 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                 })),
             updated_at: requisition.updated_at,
         }, {
-            onFinish: () => {
+            onSuccess: () => {
                 setActionProcessing(false);
                 setIsReceiveDialogOpen(false);
+                toast.success('Receipt confirmed successfully.');
+            },
+            onError: (errors) => {
+                const firstError = Object.values(errors)[0];
+                toast.error(typeof firstError === 'string' ? firstError : 'Could not confirm receipt. Please try again.');
+            },
+            onFinish: () => {
+                setActionProcessing(false);
             },
         });
     };
@@ -253,7 +262,7 @@ export default function RequisitionShow({ requisition, canApproveL1, canApproveL
                                 'Medical Director',
                             ].includes(r));
                             
-                            const canReceive = !isPurchase && ['issued', 'in_transit', 'partially_issued', 'partially_received'].includes(requisition.status) && 
+                            const canReceive = !isPurchase && ['in_transit', 'partially_issued', 'partially_received'].includes(requisition.status) &&
                                               (isRequester || isDeptHead || isSuperAdmin || isManager);
 
                             if (!canReceive) return null;

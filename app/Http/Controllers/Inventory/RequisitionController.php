@@ -1119,7 +1119,7 @@ class RequisitionController extends Controller
         }
 
         if (! in_array($requisition->status, ['in_transit', 'partially_received', 'partially_issued'])) {
-            return back()->with('error', 'Only in-transit, partially-issued, or partially-received requisitions can be received.');
+            return back()->withErrors(['error' => 'Only in-transit, partially-issued, or partially-received requisitions can be received.']);
         }
 
         $validated = $request->validate([
